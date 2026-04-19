@@ -1,0 +1,38 @@
+{
+  "name": "iris",
+  "version": "1.0.0",
+  "description": "Claude Code proxy to OpenRouter with usage dashboard",
+  "type": "module",
+  "scripts": {
+    "bootstrap": "./scripts/setup.sh",
+    "dev": "./scripts/dev.sh",
+    "dev:back": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "serve": "./scripts/build.sh",
+    "db:push": "drizzle-kit push"
+  },
+  "keywords": [],
+  "author": "Hugo Chiu",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hugochiu/iris.git"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.14",
+    "better-sqlite3": "^12.9.0",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.14"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["better-sqlite3", "esbuild"]
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.6.0",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  }
+}
