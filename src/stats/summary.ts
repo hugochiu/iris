@@ -28,6 +28,8 @@ export async function summaryHandler(c: Context) {
       errorCount: sql<number>`sum(case when ${requestLogs.status} = 'error' then 1 else 0 end)`,
       totalCost: sql<number>`coalesce(sum(${requestLogs.cost}), 0)`,
       avgDurationMs: sql<number>`coalesce(avg(${requestLogs.durationMs}), 0)`,
+      avgTtftMs: sql<number>`coalesce(avg(${requestLogs.ttftMs}), 0)`,
+      avgTpotMs: sql<number>`coalesce(avg(${requestLogs.tpotMs}), 0)`,
       inputTokens: sql<number>`coalesce(sum(${requestLogs.inputTokens}), 0)`,
       outputTokens: sql<number>`coalesce(sum(${requestLogs.outputTokens}), 0)`,
       totalTokens: sql<number>`coalesce(sum(${requestLogs.totalTokens}), 0)`,
@@ -68,6 +70,8 @@ export async function summaryHandler(c: Context) {
     successRate: totalRequests > 0 ? successCount / totalRequests : 0,
     totalCost: Number(row?.totalCost ?? 0),
     avgDurationMs: Number(row?.avgDurationMs ?? 0),
+    avgTtftMs: Number(row?.avgTtftMs ?? 0),
+    avgTpotMs: Number(row?.avgTpotMs ?? 0),
     tokens: {
       input: inputTokens,
       output: Number(row?.outputTokens ?? 0),

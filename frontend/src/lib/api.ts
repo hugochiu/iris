@@ -1,4 +1,4 @@
-export type Range = '24h' | '7d' | '30d' | 'all';
+export type Range = 'today' | '24h' | '7d' | '30d' | 'all';
 export type Bucket = 'hour' | 'day';
 
 export const ERROR_CATEGORIES = [
@@ -23,6 +23,8 @@ export interface Summary {
   successRate: number;
   totalCost: number;
   avgDurationMs: number;
+  avgTtftMs: number;
+  avgTpotMs: number;
   tokens: {
     input: number;
     output: number;
@@ -45,6 +47,8 @@ export interface TimeseriesPoint {
   cacheReadTokens: number;
   cacheCreationTokens: number;
   cacheHitRate: number;
+  avgTtftMs: number;
+  avgTpotMs: number;
 }
 
 export interface Timeseries {
@@ -78,6 +82,8 @@ export interface LogRow {
   cacheReadInputTokens: number;
   cacheCreationInputTokens: number;
   durationMs: number;
+  ttftMs: number | null;
+  tpotMs: number | null;
   status: 'success' | 'error';
   errorMessage: string | null;
   hasToolUse: boolean;

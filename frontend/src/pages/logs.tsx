@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLogs } from '@/hooks/use-stats';
 import type { Range, LogsQuery } from '@/lib/api';
 import { Card } from '@/components/ui/card';
@@ -14,7 +14,23 @@ export function LogsPage({ range }: { range: Range }) {
   const [toolUse, setToolUse] = useState<'' | 'true' | 'false'>('');
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [cursorStack, setCursorStack] = useState<(string | undefined)[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(
+    () => new URLSearchParams(window.location.search).get('log'),
+  );
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (selected) {
+      if (url.searchParams.get('log') !== selected) {
+        url.searchParams.set('log', selected);
+        window.history.replaceState(null, '', url.toString());
+      }
+    } else if (url.searchParams.has('log') || url.searchParams.has('pane')) {
+      url.searchParams.delete('log');
+      url.searchParams.delete('pane');
+      window.history.replaceState(null, '', url.toString());
+    }
+  }, [selected]);
 
   const query: LogsQuery = {
     range,
@@ -91,13 +107,14 @@ export function LogsPage({ range }: { range: Range }) {
                 <Th className="text-right">Cache R/W</Th>
                 <Th className="text-right">Cost</Th>
                 <Th className="text-right">Dur</Th>
+                <Th className="text-right">TTFT / TPOT</Th>
                 <Th>Status</Th>
                 <Th>Flags</Th>
               </tr>
             </thead>
             <tbody>
               {items.length === 0 && !logs.isLoading && (
-                <tr><td colSpan={9} className="py-8 text-center text-muted">No logs match current filters.</td></tr>
+                <tr><td colSpan={10} className="py-8 text-center text-muted">No logs match current filters.</td></tr>
               )}
               {items.map(row => (
                 <tr
@@ -119,6 +136,11 @@ export function LogsPage({ range }: { range: Range }) {
                   </Td>
                   <Td className="text-right tabular-nums text-accent">{row.cost != null ? formatCost(row.cost) : '—'}</Td>
                   <Td className="text-right tabular-nums">{formatDuration(row.durationMs)}</Td>
+                  <Td className="text-right tabular-nums text-muted">
+                    {row.ttftMs != null ? formatDuration(row.ttftMs) : '—'}
+                    <span className="mx-1 text-border">/</span>
+                    {row.tpotMs != null ? formatDuration(row.tpotMs) : '—'}
+                  </Td>
                   <Td>
                     <Badge tone={row.status === 'success' ? 'success' : 'danger'}>{row.status}</Badge>
                   </Td>

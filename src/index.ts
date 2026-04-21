@@ -24,6 +24,8 @@ const TARGET_CREATE_SQL = `CREATE TABLE request_logs (
   cache_read_input_tokens INTEGER DEFAULT 0,
   cache_creation_input_tokens INTEGER DEFAULT 0,
   duration_ms INTEGER NOT NULL,
+  ttft_ms INTEGER,
+  tpot_ms REAL,
   status TEXT NOT NULL,
   error_message TEXT,
   has_tool_use INTEGER DEFAULT 0,
@@ -34,7 +36,8 @@ const TARGET_COLUMNS = [
   'id', 'request_id', 'timestamp', 'model', 'provider', 'real_model',
   'input_tokens', 'output_tokens', 'total_tokens', 'cost',
   'cache_read_input_tokens', 'cache_creation_input_tokens',
-  'duration_ms', 'status', 'error_message', 'has_tool_use', 'stop_reason',
+  'duration_ms', 'ttft_ms', 'tpot_ms',
+  'status', 'error_message', 'has_tool_use', 'stop_reason',
 ];
 
 function migrateRequestLogs() {

@@ -14,6 +14,8 @@ export const requestLogs = sqliteTable('request_logs', {
   cacheReadInputTokens: integer('cache_read_input_tokens').default(0),
   cacheCreationInputTokens: integer('cache_creation_input_tokens').default(0),
   durationMs: integer('duration_ms').notNull(),
+  ttftMs: integer('ttft_ms'),
+  tpotMs: real('tpot_ms'),
   status: text('status').notNull(),
   errorMessage: text('error_message'),
   hasToolUse: integer('has_tool_use', { mode: 'boolean' }).default(false),

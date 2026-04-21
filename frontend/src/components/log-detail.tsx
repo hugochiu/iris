@@ -8,6 +8,20 @@ import { cn } from '@/lib/utils';
 
 type Pane = 'request' | 'response' | 'headers';
 
+const PANES: Pane[] = ['request', 'response', 'headers'];
+
+function readPaneFromUrl(): Pane {
+  const p = new URLSearchParams(window.location.search).get('pane');
+  return (PANES as string[]).includes(p ?? '') ? (p as Pane) : 'request';
+}
+
+function writePaneToUrl(pane: Pane) {
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('pane') === pane) return;
+  url.searchParams.set('pane', pane);
+  window.history.replaceState(null, '', url.toString());
+}
+
 export function LogDetailDrawer({
   requestId,
   onClose,
@@ -15,7 +29,7 @@ export function LogDetailDrawer({
   requestId: string | null;
   onClose: () => void;
 }) {
-  const [pane, setPane] = useState<Pane>('request');
+  const [pane, setPane] = useState<Pane>(() => readPaneFromUrl());
   const { data, isLoading } = useLogDetail(requestId);
 
   useEffect(() => {
@@ -25,6 +39,10 @@ export function LogDetailDrawer({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  useEffect(() => {
+    if (requestId) writePaneToUrl(pane);
+  }, [pane, requestId]);
 
   if (!requestId) return null;
 
@@ -86,6 +104,17 @@ export function LogDetailDrawer({
             </Field>
             <Field label="Duration">
               <div className="text-fg tabular-nums">{formatDuration(log.durationMs)}</div>
+            </Field>
+            <Field label="TTFT">
+              <div className="text-fg tabular-nums">{log.ttftMs != null ? formatDuration(log.ttftMs) : '—'}</div>
+            </Field>
+            <Field label="TPOT">
+              <div className="text-fg tabular-nums">
+                {log.tpotMs != null ? formatDuration(log.tpotMs) : '—'}
+              </div>
+              {log.tpotMs != null && log.tpotMs > 0 && (
+                <div className="text-muted text-[11px] tabular-nums">≈ {(1000 / log.tpotMs).toFixed(1)} tok/s</div>
+              )}
             </Field>
             <Field label="Stop / Tool">
               <div className="text-fg">

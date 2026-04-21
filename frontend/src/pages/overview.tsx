@@ -130,7 +130,7 @@ export function OverviewPage({ range }: { range: Range }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         <MetricCard
           label="Requests"
           value={s ? formatNumber(s.totalRequests) : '—'}
@@ -157,6 +157,16 @@ export function OverviewPage({ range }: { range: Range }) {
           label="Avg Latency"
           value={s ? formatDuration(s.avgDurationMs) : '—'}
           sub={s && `${s.toolUseCount} tool uses`}
+        />
+        <MetricCard
+          label="Avg TTFT"
+          value={s && s.avgTtftMs > 0 ? formatDuration(s.avgTtftMs) : '—'}
+          sub="time to first token"
+        />
+        <MetricCard
+          label="Avg TPOT"
+          value={s && s.avgTpotMs > 0 ? formatDuration(s.avgTpotMs) : '—'}
+          sub={s && s.avgTpotMs > 0 ? `≈ ${(1000 / s.avgTpotMs).toFixed(1)} tok/s` : 'per output token'}
         />
       </div>
 
@@ -240,6 +250,36 @@ export function OverviewPage({ range }: { range: Range }) {
           </CardBody>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-baseline justify-between gap-4">
+            <span>Latency over time</span>
+            <div className="flex gap-3 text-xs">
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm" style={{ background: '#3b82f6' }} /><span className="text-muted">TTFT</span></span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm" style={{ background: '#10b981' }} /><span className="text-muted">TPOT</span></span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardBody>
+          <div className="h-60">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={points} margin={{ top: 8, right: 8, bottom: 4, left: -8 }}>
+                <CartesianGrid stroke="hsl(240 6% 90%)" strokeDasharray="3 3" />
+                <XAxis dataKey="label" tick={{ fill: 'hsl(240 4% 46%)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fill: 'hsl(240 4% 46%)', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => formatDuration(v)} width={56} />
+                <Tooltip
+                  contentStyle={{ background: '#fff', border: '1px solid hsl(240 6% 90%)', borderRadius: 8, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                  formatter={(v: number) => formatDuration(v)}
+                  labelStyle={{ color: 'hsl(240 4% 46%)' }}
+                />
+                <Line type="monotone" dataKey="avgTtftMs" name="TTFT" stroke="#3b82f6" strokeWidth={2} dot={points.length === 1 ? { r: 5, fill: '#3b82f6', stroke: '#3b82f6' } : false} />
+                <Line type="monotone" dataKey="avgTpotMs" name="TPOT" stroke="#10b981" strokeWidth={2} dot={points.length === 1 ? { r: 5, fill: '#10b981', stroke: '#10b981' } : false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardBody>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>

@@ -3,17 +3,28 @@ import { useEffect, useMemo, useState } from 'react';
 export function JsonTree({ data }: { data: unknown }) {
   const [version, setVersion] = useState(0);
   const [defaultOpen, setDefaultOpen] = useState<boolean | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const autoExpandPaths = useMemo(() => computeAutoExpandPaths(data), [data]);
 
   function expandAll() { setDefaultOpen(true); setVersion(v => v + 1); }
   function collapseAll() { setDefaultOpen(false); setVersion(v => v + 1); }
+  async function copyJson() {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore
+    }
+  }
 
   return (
     <div className="text-xs font-mono">
       <div className="flex gap-3 pb-2 mb-2 border-b border-border text-[11px]">
         <button onClick={expandAll} className="text-muted hover:text-fg">Expand all</button>
         <button onClick={collapseAll} className="text-muted hover:text-fg">Collapse all</button>
+        <button onClick={copyJson} className="text-muted hover:text-fg">{copied ? 'Copied' : 'Copy'}</button>
       </div>
       <JsonNode
         value={data}
@@ -38,19 +49,21 @@ function computeAutoExpandPaths(data: unknown): Set<string> {
     if (!msg || typeof msg !== 'object') return;
     const m = msg as { role?: unknown; content?: unknown };
     if (m.role !== 'user') return;
+    if (!Array.isArray(m.content)) return;
 
     const msgPath = `messages.${i}`;
-    set.add(msgPath);
+    const contentPath = `${msgPath}.content`;
+    const textIndices: number[] = [];
+    m.content.forEach((item, j) => {
+      if (item && typeof item === 'object' && (item as { type?: unknown }).type === 'text') {
+        textIndices.push(j);
+      }
+    });
+    if (textIndices.length === 0) return;
 
-    if (Array.isArray(m.content)) {
-      const contentPath = `${msgPath}.content`;
-      set.add(contentPath);
-      m.content.forEach((item, j) => {
-        if (item && typeof item === 'object' && (item as { type?: unknown }).type === 'text') {
-          set.add(`${contentPath}.${j}`);
-        }
-      });
-    }
+    set.add(msgPath);
+    set.add(contentPath);
+    textIndices.forEach(j => set.add(`${contentPath}.${j}`));
   });
   return set;
 }

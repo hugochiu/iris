@@ -2,6 +2,7 @@ import type { Range } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 const OPTIONS: { value: Range; label: string }[] = [
+  { value: 'today', label: 'Today' },
   { value: '24h', label: '24h' },
   { value: '7d', label: '7d' },
   { value: '30d', label: '30d' },

@@ -24,6 +24,8 @@ export async function timeseriesHandler(c: Context) {
       outputTokens: sql<number>`coalesce(sum(${requestLogs.outputTokens}), 0)`,
       cacheReadTokens: sql<number>`coalesce(sum(${requestLogs.cacheReadInputTokens}), 0)`,
       cacheCreationTokens: sql<number>`coalesce(sum(${requestLogs.cacheCreationInputTokens}), 0)`,
+      avgTtftMs: sql<number>`coalesce(avg(${requestLogs.ttftMs}), 0)`,
+      avgTpotMs: sql<number>`coalesce(avg(${requestLogs.tpotMs}), 0)`,
     })
     .from(requestLogs)
     .where(cutoffIso ? sql`${requestLogs.timestamp} >= ${cutoffIso}` : undefined)
@@ -46,6 +48,8 @@ export async function timeseriesHandler(c: Context) {
         cacheReadTokens: cacheRead,
         cacheCreationTokens: Number(r.cacheCreationTokens),
         cacheHitRate: denom > 0 ? cacheRead / denom : 0,
+        avgTtftMs: Number(r.avgTtftMs),
+        avgTpotMs: Number(r.avgTpotMs),
       };
     }),
   });

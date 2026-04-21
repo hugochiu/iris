@@ -18,6 +18,8 @@ export function logRequest(data: RequestLogData): void {
         cacheReadInputTokens: data.cacheReadInputTokens,
         cacheCreationInputTokens: data.cacheCreationInputTokens,
         durationMs: data.durationMs,
+        ttftMs: data.ttftMs,
+        tpotMs: data.tpotMs,
         status: data.status,
         errorMessage: data.errorMessage,
         hasToolUse: data.hasToolUse,

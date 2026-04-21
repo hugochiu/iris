@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LayoutDashboard, ScrollText, Boxes, type LucideIcon } from 'lucide-react';
 import { RangePicker } from '@/components/range-picker';
 import { OverviewPage } from '@/pages/overview';
@@ -15,9 +15,31 @@ const TABS: { value: Tab; label: string; icon: LucideIcon }[] = [
   { value: 'models', label: 'Models', icon: Boxes },
 ];
 
+const TAB_VALUES = TABS.map(t => t.value);
+
+function readTabFromUrl(): Tab {
+  const t = new URLSearchParams(window.location.search).get('tab');
+  return (TAB_VALUES as string[]).includes(t ?? '') ? (t as Tab) : 'overview';
+}
+
 export function App() {
-  const [tab, setTab] = useState<Tab>('overview');
+  const [tab, setTab] = useState<Tab>(() => readTabFromUrl());
   const [range, setRange] = useState<Range>('7d');
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    let changed = false;
+    if (tab === 'overview') {
+      if (url.searchParams.has('tab')) { url.searchParams.delete('tab'); changed = true; }
+    } else if (url.searchParams.get('tab') !== tab) {
+      url.searchParams.set('tab', tab); changed = true;
+    }
+    if (tab !== 'logs') {
+      if (url.searchParams.has('log')) { url.searchParams.delete('log'); changed = true; }
+      if (url.searchParams.has('pane')) { url.searchParams.delete('pane'); changed = true; }
+    }
+    if (changed) window.history.replaceState(null, '', url.toString());
+  }, [tab]);
 
   return (
     <div className="min-h-screen">

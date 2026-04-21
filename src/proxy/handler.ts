@@ -41,6 +41,8 @@ interface LogState {
   finished: boolean;
   responseMessage: any | null;
   contentBlocks: any[];
+  firstTokenAt: number | null;
+  lastTokenAt: number | null;
 }
 
 function createLogState(): LogState {
@@ -57,6 +59,8 @@ function createLogState(): LogState {
     finished: false,
     responseMessage: null,
     contentBlocks: [],
+    firstTokenAt: null,
+    lastTokenAt: null,
   };
 }
 
@@ -86,6 +90,15 @@ function extractLogData(eventType: string, data: any, state: LogState): void {
       const block = state.contentBlocks[idx];
       if (!block) break;
       const delta = data.delta;
+      const isTokenDelta =
+        delta?.type === 'text_delta' ||
+        delta?.type === 'input_json_delta' ||
+        delta?.type === 'thinking_delta';
+      if (isTokenDelta) {
+        const now = Date.now();
+        if (state.firstTokenAt == null) state.firstTokenAt = now;
+        state.lastTokenAt = now;
+      }
       if (delta?.type === 'text_delta') block.text = (block.text ?? '') + (delta.text ?? '');
       else if (delta?.type === 'input_json_delta') block.input = (block.input ?? '') + (delta.partial_json ?? '');
       else if (delta?.type === 'thinking_delta') block.thinking = (block.thinking ?? '') + (delta.thinking ?? '');
@@ -190,6 +203,8 @@ export interface RequestLogData {
   cacheReadInputTokens: number;
   cacheCreationInputTokens: number;
   durationMs: number;
+  ttftMs: number | null;
+  tpotMs: number | null;
   status: 'success' | 'error';
   errorMessage: string | null;
   hasToolUse: boolean;
@@ -228,6 +243,13 @@ function buildLogData(
   status: 'success' | 'error',
   errorMessage: string | null,
 ): RequestLogData {
+  const ttftMs = state.firstTokenAt != null ? state.firstTokenAt - startTime : null;
+  let tpotMs: number | null = null;
+  if (state.firstTokenAt != null && state.lastTokenAt != null && state.outputTokens > 0) {
+    tpotMs = state.outputTokens >= 2
+      ? (state.lastTokenAt - state.firstTokenAt) / (state.outputTokens - 1)
+      : 0;
+  }
   return {
     requestId,
     timestamp: new Date().toISOString(),
@@ -241,6 +263,8 @@ function buildLogData(
     cacheReadInputTokens: state.cacheReadInputTokens,
     cacheCreationInputTokens: state.cacheCreationInputTokens,
     durationMs: Date.now() - startTime,
+    ttftMs,
+    tpotMs,
     status,
     errorMessage,
     hasToolUse: state.hasToolUse,
