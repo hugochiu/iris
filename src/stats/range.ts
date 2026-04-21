@@ -1,5 +1,5 @@
 export type Range = 'today' | '24h' | '7d' | '30d' | 'all';
-export type Bucket = 'hour' | 'day';
+export type Bucket = '5min' | 'hour' | 'day';
 
 const RANGE_MS: Record<'24h' | '7d' | '30d', number> = {
   '24h': 24 * 60 * 60 * 1000,
@@ -20,6 +20,8 @@ export function parseRange(raw: string | undefined): { range: Range; cutoffIso: 
 }
 
 export function parseBucket(raw: string | undefined, range: Range): Bucket {
-  if (raw === 'hour' || raw === 'day') return raw;
-  return range === '24h' || range === 'today' ? 'hour' : 'day';
+  if (raw === '5min' || raw === 'hour' || raw === 'day') return raw;
+  if (range === 'today') return '5min';
+  if (range === '24h') return 'hour';
+  return 'day';
 }

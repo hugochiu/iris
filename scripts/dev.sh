@@ -17,6 +17,11 @@ trap cleanup EXIT INT TERM
 echo "[dev] backend  → http://localhost:3000"
 (cd "$ROOT" && pnpm dev:back) &
 
+echo "[dev] waiting for backend on :3000..."
+until nc -z localhost 3000 2>/dev/null; do
+  sleep 0.2
+done
+
 echo "[dev] frontend → http://localhost:5173"
 (cd "$ROOT/frontend" && pnpm dev) &
 

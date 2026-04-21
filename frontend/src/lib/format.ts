@@ -32,10 +32,15 @@ export function formatTimestamp(iso: string): string {
   });
 }
 
-export function formatBucketLabel(iso: string, bucket: 'hour' | 'day'): string {
+export function formatBucketLabel(iso: string, bucket: '5min' | 'hour' | 'day'): string {
   const d = new Date(iso);
-  if (bucket === 'hour') {
-    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:00`;
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  if (bucket === '5min') {
+    return `${mm}/${dd} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   }
-  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  if (bucket === 'hour') {
+    return `${mm}/${dd} ${String(d.getHours()).padStart(2, '0')}:00`;
+  }
+  return `${mm}/${dd}`;
 }

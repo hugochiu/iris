@@ -5,6 +5,8 @@ import { requestLogs } from '../db/schema.js';
 import { parseRange, parseBucket } from './range.js';
 
 const BUCKET_FORMAT = {
+  '5min':
+    "strftime('%Y-%m-%dT%H:', timestamp) || printf('%02d', cast(strftime('%M', timestamp) as int) / 5 * 5) || ':00Z'",
   hour: "strftime('%Y-%m-%dT%H:00:00Z', timestamp)",
   day: "strftime('%Y-%m-%dT00:00:00Z', timestamp)",
 } as const;

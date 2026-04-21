@@ -175,14 +175,26 @@ export function OverviewPage({ range }: { range: Range }) {
           <CardHeader>
             <div className="flex items-baseline justify-between gap-4">
               <span>Cost & cache hit over time</span>
-              <div className="flex gap-3 text-xs">
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm" style={{ background: '#3b82f6' }} /><span className="text-muted">cost</span></span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm" style={{ background: '#10b981' }} /><span className="text-muted">cache hit</span></span>
-              </div>
+              <span className="flex items-baseline gap-1.5">
+                <span className="text-muted text-xs">total</span>
+                <span className="text-foreground font-medium tabular-nums">{s ? formatCost(s.totalCost) : '—'}</span>
+              </span>
             </div>
           </CardHeader>
           <CardBody>
-            <div className="h-60">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3 text-xs">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-sm" style={{ background: '#3b82f6' }} />
+                <span className="text-muted">cost</span>
+                <span className="tabular-nums text-foreground font-medium">{s ? formatCost(s.totalCost) : '—'}</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-sm" style={{ background: '#10b981' }} />
+                <span className="text-muted">cache hit</span>
+                <span className="tabular-nums text-foreground font-medium">{s ? formatPercent(s.cacheHitRate) : '—'}</span>
+              </span>
+            </div>
+            <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={points} margin={{ top: 8, right: 8, bottom: 4, left: -16 }}>
                   <CartesianGrid stroke="hsl(240 6% 90%)" strokeDasharray="3 3" />
@@ -194,8 +206,8 @@ export function OverviewPage({ range }: { range: Range }) {
                     formatter={(v: number, name: string) => (name === 'cache hit' ? formatPercent(v) : formatCost(v))}
                     labelStyle={{ color: 'hsl(240 4% 46%)' }}
                   />
-                  <Line yAxisId="cost" type="monotone" dataKey="cost" name="cost" stroke="#3b82f6" strokeWidth={2} dot={points.length === 1 ? { r: 5, fill: '#3b82f6', stroke: '#3b82f6' } : false} />
-                  <Line yAxisId="hit" type="monotone" dataKey="cacheHitRate" name="cache hit" stroke="#10b981" strokeWidth={2} dot={points.length === 1 ? { r: 2.5, fill: '#10b981', stroke: '#10b981', strokeDasharray: '0' } : false} strokeDasharray="4 2" />
+                  <Line yAxisId="cost" type="monotone" dataKey="cost" name="cost" stroke="#3b82f6" strokeWidth={2} dot={points.length === 1 ? { r: 4, fill: '#3b82f6', stroke: '#3b82f6' } : false} />
+                  <Line yAxisId="hit" type="monotone" dataKey="cacheHitRate" name="cache hit" stroke="#10b981" strokeWidth={2} dot={points.length === 1 ? { r: 4, fill: '#10b981', stroke: '#10b981', strokeDasharray: '0' } : false} strokeDasharray="4 2" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -206,7 +218,10 @@ export function OverviewPage({ range }: { range: Range }) {
           <CardHeader>
             <div className="flex items-baseline justify-between gap-4">
               <span>Token usage</span>
-              <span className="text-foreground font-medium tabular-nums">{formatNumber(tokenGrandTotal)}</span>
+              <span className="flex items-baseline gap-1.5">
+                <span className="text-muted text-xs">total</span>
+                <span className="text-foreground font-medium tabular-nums">{formatNumber(tokenGrandTotal)}</span>
+              </span>
             </div>
           </CardHeader>
           <CardBody>
@@ -251,35 +266,41 @@ export function OverviewPage({ range }: { range: Range }) {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-baseline justify-between gap-4">
-            <span>Latency over time</span>
-            <div className="flex gap-3 text-xs">
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm" style={{ background: '#3b82f6' }} /><span className="text-muted">TTFT</span></span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm" style={{ background: '#10b981' }} /><span className="text-muted">TPOT</span></span>
-            </div>
-          </div>
-        </CardHeader>
-        <CardBody>
-          <div className="h-60">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={points} margin={{ top: 8, right: 8, bottom: 4, left: -8 }}>
-                <CartesianGrid stroke="hsl(240 6% 90%)" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fill: 'hsl(240 4% 46%)', fontSize: 11 }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fill: 'hsl(240 4% 46%)', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => formatDuration(v)} width={56} />
-                <Tooltip
-                  contentStyle={{ background: '#fff', border: '1px solid hsl(240 6% 90%)', borderRadius: 8, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
-                  formatter={(v: number) => formatDuration(v)}
-                  labelStyle={{ color: 'hsl(240 4% 46%)' }}
-                />
-                <Line type="monotone" dataKey="avgTtftMs" name="TTFT" stroke="#3b82f6" strokeWidth={2} dot={points.length === 1 ? { r: 5, fill: '#3b82f6', stroke: '#3b82f6' } : false} />
-                <Line type="monotone" dataKey="avgTpotMs" name="TPOT" stroke="#10b981" strokeWidth={2} dot={points.length === 1 ? { r: 5, fill: '#10b981', stroke: '#10b981' } : false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CardBody>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {([
+          { key: 'avgTtftMs', label: 'TTFT', color: '#3b82f6', avg: s?.avgTtftMs ?? 0 },
+          { key: 'avgTpotMs', label: 'TPOT', color: '#10b981', avg: s?.avgTpotMs ?? 0 },
+        ] as const).map(series => (
+          <Card key={series.key}>
+            <CardHeader>
+              <div className="flex items-baseline justify-between gap-4">
+                <span>{series.label} over time</span>
+                <span className="flex items-baseline gap-1.5">
+                  <span className="text-muted text-xs">avg</span>
+                  <span className="text-foreground font-medium tabular-nums">{s && series.avg > 0 ? formatDuration(series.avg) : '—'}</span>
+                </span>
+              </div>
+            </CardHeader>
+            <CardBody>
+              <div className="h-60">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={points} margin={{ top: 8, right: 8, bottom: 4, left: -8 }}>
+                    <CartesianGrid stroke="hsl(240 6% 90%)" strokeDasharray="3 3" />
+                    <XAxis dataKey="label" tick={{ fill: 'hsl(240 4% 46%)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fill: 'hsl(240 4% 46%)', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => formatDuration(v)} width={56} />
+                    <Tooltip
+                      contentStyle={{ background: '#fff', border: '1px solid hsl(240 6% 90%)', borderRadius: 8, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                      formatter={(v: number) => formatDuration(v)}
+                      labelStyle={{ color: 'hsl(240 4% 46%)' }}
+                    />
+                    <Line type="monotone" dataKey={series.key} name={series.label} stroke={series.color} strokeWidth={2} dot={points.length === 1 ? { r: 4, fill: series.color, stroke: series.color } : false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardBody>
+          </Card>
+        ))}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>

@@ -1,5 +1,5 @@
 export type Range = 'today' | '24h' | '7d' | '30d' | 'all';
-export type Bucket = 'hour' | 'day';
+export type Bucket = '5min' | 'hour' | 'day';
 
 export const ERROR_CATEGORIES = [
   'rate_limit',
