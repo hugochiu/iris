@@ -16,15 +16,22 @@ const TABS: { value: Tab; label: string; icon: LucideIcon }[] = [
 ];
 
 const TAB_VALUES = TABS.map(t => t.value);
+const RANGE_VALUES: Range[] = ['today', '24h', '7d', '30d', 'all'];
+const DEFAULT_RANGE: Range = 'today';
 
 function readTabFromUrl(): Tab {
   const t = new URLSearchParams(window.location.search).get('tab');
   return (TAB_VALUES as string[]).includes(t ?? '') ? (t as Tab) : 'overview';
 }
 
+function readRangeFromUrl(): Range {
+  const r = new URLSearchParams(window.location.search).get('range');
+  return (RANGE_VALUES as string[]).includes(r ?? '') ? (r as Range) : DEFAULT_RANGE;
+}
+
 export function App() {
   const [tab, setTab] = useState<Tab>(() => readTabFromUrl());
-  const [range, setRange] = useState<Range>('7d');
+  const [range, setRange] = useState<Range>(() => readRangeFromUrl());
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -40,6 +47,17 @@ export function App() {
     }
     if (changed) window.history.replaceState(null, '', url.toString());
   }, [tab]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    let changed = false;
+    if (range === DEFAULT_RANGE) {
+      if (url.searchParams.has('range')) { url.searchParams.delete('range'); changed = true; }
+    } else if (url.searchParams.get('range') !== range) {
+      url.searchParams.set('range', range); changed = true;
+    }
+    if (changed) window.history.replaceState(null, '', url.toString());
+  }, [range]);
 
   return (
     <div className="min-h-screen">
