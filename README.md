@@ -105,6 +105,20 @@ curl http://localhost:3000/v1/messages \
 
 开发模式下前端通过 Vite proxy 把 `/api/*` 转发到 :3000，所以只在 :5173 访问 dashboard 即可。
 
+### 更新代码后
+
+`git pull` 之后如果 `package.json` 或 schema 有变更，最省心的方式是再跑一次 `pnpm bootstrap`——它的每一步都是幂等的（已装的依赖跳过、`.env` 已存在不覆盖、`mkdir -p data` 无副作用）。
+
+唯一要留意的是 `pnpm db:push` 会把 schema 同步到 SQLite，**破坏性变更**（删字段、改类型、加 NOT NULL 无默认值）可能导致数据丢失，注意看终端输出里的确认提示。
+
+只想更新依赖、不碰数据库的话：
+
+```bash
+pnpm install && (cd frontend && pnpm install)
+```
+
+注意：`pnpm dev` 本身**不会**检查或安装依赖，依赖变动后不手动装一次会直接报 `Cannot find module`。
+
 ## 项目结构
 
 ```
