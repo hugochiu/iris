@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 
-export function JsonTree({ data }: { data: unknown }) {
+type Mode = 'request' | 'response' | 'headers';
+
+export function JsonTree({ data, mode = 'response' }: { data: unknown; mode?: Mode }) {
   const [version, setVersion] = useState(0);
   const [defaultOpen, setDefaultOpen] = useState<boolean | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const autoExpandPaths = useMemo(() => computeAutoExpandPaths(data), [data]);
+  // request 侧：messages 数组通常很长（含历史轮 + system prompt + tool schemas），
+  // 只默认展开最近一条 user message；其余按"浅层折叠"启发式处理。
+  // response/headers 侧：默认全展开，redacted_thinking 例外。
+  const autoExpandPaths = useMemo(
+    () => (mode === 'request' ? computeRequestAutoExpandPaths(data) : new Set<string>()),
+    [data, mode],
+  );
 
   function expandAll() { setDefaultOpen(true); setVersion(v => v + 1); }
   function collapseAll() { setDefaultOpen(false); setVersion(v => v + 1); }
@@ -32,13 +40,14 @@ export function JsonTree({ data }: { data: unknown }) {
         path=""
         version={version}
         forced={defaultOpen}
+        mode={mode}
         autoExpandPaths={autoExpandPaths}
       />
     </div>
   );
 }
 
-function computeAutoExpandPaths(data: unknown): Set<string> {
+function computeRequestAutoExpandPaths(data: unknown): Set<string> {
   const set = new Set<string>();
   if (!data || typeof data !== 'object') return set;
   const messages = (data as { messages?: unknown }).messages;
@@ -74,15 +83,16 @@ interface NodeProps {
   path: string;
   version: number;
   forced: boolean | null;
+  mode: Mode;
   autoExpandPaths: Set<string>;
 }
 
-function JsonNode({ value, depth, path, version, forced, autoExpandPaths }: NodeProps) {
+function JsonNode({ value, depth, path, version, forced, mode, autoExpandPaths }: NodeProps) {
   if (value === null) return <span className="text-purple-600">null</span>;
   if (value === undefined) return <span className="text-slate-400">undefined</span>;
   if (typeof value === 'boolean') return <span className="text-purple-600">{String(value)}</span>;
   if (typeof value === 'number') return <span className="text-amber-700 tabular-nums">{value}</span>;
-  if (typeof value === 'string') return <StringValue value={value} />;
+  if (typeof value === 'string') return <StringValue value={value} mode={mode} />;
   if (typeof value === 'object') {
     return (
       <Collapsible
@@ -91,6 +101,7 @@ function JsonNode({ value, depth, path, version, forced, autoExpandPaths }: Node
         path={path}
         version={version}
         forced={forced}
+        mode={mode}
         autoExpandPaths={autoExpandPaths}
       />
     );
@@ -98,8 +109,10 @@ function JsonNode({ value, depth, path, version, forced, autoExpandPaths }: Node
   return <span className="text-slate-500">{String(value)}</span>;
 }
 
-function StringValue({ value }: { value: string }) {
-  const [expanded, setExpanded] = useState(false);
+function StringValue({ value, mode }: { value: string; mode: Mode }) {
+  // request 侧默认折叠长字符串避免 system prompt / 历史轮糊屏；
+  // response/headers 侧用户要看完整内容，默认展开。
+  const [expanded, setExpanded] = useState(mode !== 'request');
   const TRUNCATE = 240;
   const isLong = value.length > TRUNCATE;
   const shown = !expanded && isLong ? value.slice(0, TRUNCATE) : value;
@@ -125,6 +138,7 @@ function Collapsible({
   path,
   version,
   forced,
+  mode,
   autoExpandPaths,
 }: {
   value: object | unknown[];
@@ -132,6 +146,7 @@ function Collapsible({
   path: string;
   version: number;
   forced: boolean | null;
+  mode: Mode;
   autoExpandPaths: Set<string>;
 }) {
   const isArray = Array.isArray(value);
@@ -140,8 +155,11 @@ function Collapsible({
     : Object.entries(value);
   const count = entries.length;
 
-  const autoExpand = autoExpandPaths.has(path);
-  const initial = autoExpand || (depth < 2 && count <= 20);
+  // Anthropic 的 redacted_thinking block 里 data 是一段 base64-like 加密串，展开无信息量
+  const isRedactedThinking = !isArray && (value as { type?: unknown }).type === 'redacted_thinking';
+  const initial = mode === 'request'
+    ? autoExpandPaths.has(path) || (depth < 2 && count <= 20)
+    : !isRedactedThinking;
   const [open, setOpen] = useState<boolean>(initial);
 
   useEffect(() => {
@@ -188,6 +206,7 @@ function Collapsible({
                 path={childPath}
                 version={version}
                 forced={forced}
+                mode={mode}
                 autoExpandPaths={autoExpandPaths}
               />
               {i < entries.length - 1 && <span className="text-slate-400">,</span>}

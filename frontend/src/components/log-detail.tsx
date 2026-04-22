@@ -155,7 +155,7 @@ export function LogDetailDrawer({
             ) : typeof paneContent === 'string' ? (
               <pre className="text-xs font-mono whitespace-pre-wrap break-all text-fg/90">{paneContent}</pre>
             ) : (
-              <JsonTree data={paneContent} />
+              <JsonTree data={paneContent} mode={pane} />
             )}
           </div>
         </div>
