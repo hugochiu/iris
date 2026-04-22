@@ -6,14 +6,15 @@ import { formatCost, formatDuration, formatNumber, formatPercent, formatBucketLa
 import { cn } from '@/lib/utils';
 import {
   ResponsiveContainer,
+  BarChart,
+  Bar,
   LineChart,
   Line,
+  ComposedChart,
   XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
-  AreaChart,
-  Area,
   Legend,
   PieChart,
   Pie,
@@ -274,19 +275,20 @@ export function OverviewPage({ range }: { range: Range }) {
             </div>
             <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={points} margin={{ top: 8, right: 8, bottom: 4, left: -16 }}>
-                  <CartesianGrid stroke="hsl(240 6% 90%)" strokeDasharray="3 3" />
-                  <XAxis dataKey="label" tick={{ fill: 'hsl(240 4% 46%)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                <ComposedChart data={points} margin={{ top: 8, right: 8, bottom: 4, left: -16 }}>
+                  <CartesianGrid stroke="hsl(240 6% 90%)" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fill: 'hsl(240 4% 46%)', fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={40} />
                   <YAxis yAxisId="cost" tick={{ fill: 'hsl(240 4% 46%)', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} />
                   <YAxis yAxisId="hit" orientation="right" domain={[0, 1]} tick={{ fill: 'hsl(240 4% 46%)', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `${Math.round(v * 100)}%`} />
                   <Tooltip
+                    cursor={{ fill: 'hsl(240 6% 95%)' }}
                     contentStyle={{ background: '#fff', border: '1px solid hsl(240 6% 90%)', borderRadius: 8, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
                     formatter={(v: number, name: string) => (name === 'cache hit' ? formatPercent(v) : formatCost(v))}
                     labelStyle={{ color: 'hsl(240 4% 46%)' }}
                   />
-                  <Line yAxisId="cost" type="monotone" dataKey="cost" name="cost" stroke="#3b82f6" strokeWidth={2} dot={points.length === 1 ? { r: 4, fill: '#3b82f6', stroke: '#3b82f6' } : false} />
-                  <Line yAxisId="hit" type="monotone" dataKey="cacheHitRate" name="cache hit" stroke="#10b981" strokeWidth={2} dot={points.length === 1 ? { r: 4, fill: '#10b981', stroke: '#10b981', strokeDasharray: '0' } : false} strokeDasharray="4 2" />
-                </LineChart>
+                  <Bar yAxisId="cost" dataKey="cost" name="cost" fill="#3b82f6" radius={[2, 2, 0, 0]} maxBarSize={24} />
+                  <Line yAxisId="hit" type="monotone" dataKey="cacheHitRate" name="cache hit" stroke="#10b981" strokeWidth={2} strokeDasharray="4 2" dot={points.length === 1 ? { r: 4, fill: '#10b981', stroke: '#10b981' } : false} />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </CardBody>
@@ -321,7 +323,7 @@ export function OverviewPage({ range }: { range: Range }) {
             </div>
             <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={points} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+                <BarChart data={points} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
                   <CartesianGrid stroke="hsl(240 6% 90%)" strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="label" tick={{ fill: 'hsl(240 4% 46%)', fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={40} />
                   <YAxis
@@ -333,22 +335,20 @@ export function OverviewPage({ range }: { range: Range }) {
                     tickFormatter={v => `${Math.round(v * 100)}%`}
                     width={56}
                   />
-                  <Tooltip cursor={{ stroke: 'hsl(240 6% 80%)', strokeWidth: 1 }} content={<TokenTooltip />} />
-                  {TOKEN_SERIES.map(series => (
-                    <Area
+                  <Tooltip cursor={{ fill: 'hsl(240 6% 95%)' }} content={<TokenTooltip />} />
+                  {TOKEN_SERIES.map((series, i) => (
+                    <Bar
                       key={series.key}
-                      type="monotone"
                       dataKey={series.shareKey}
                       name={series.name}
                       stackId="a"
-                      stroke={series.color}
                       fill={series.color}
-                      fillOpacity={0.7}
-                      strokeWidth={1}
-                      dot={false}
+                      fillOpacity={0.85}
+                      maxBarSize={24}
+                      radius={i === TOKEN_SERIES.length - 1 ? [2, 2, 0, 0] : 0}
                     />
                   ))}
-                </AreaChart>
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </CardBody>
@@ -375,7 +375,7 @@ export function OverviewPage({ range }: { range: Range }) {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={points} margin={{ top: 8, right: 8, bottom: 4, left: -8 }}>
                     <CartesianGrid stroke="hsl(240 6% 90%)" strokeDasharray="3 3" />
-                    <XAxis dataKey="label" tick={{ fill: 'hsl(240 4% 46%)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <XAxis dataKey="label" tick={{ fill: 'hsl(240 4% 46%)', fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={40} />
                     <YAxis tick={{ fill: 'hsl(240 4% 46%)', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => formatDuration(v)} width={56} />
                     <Tooltip
                       contentStyle={{ background: '#fff', border: '1px solid hsl(240 6% 90%)', borderRadius: 8, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}

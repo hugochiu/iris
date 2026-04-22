@@ -21,7 +21,6 @@ export function parseRange(raw: string | undefined): { range: Range; cutoffIso: 
 
 export function parseBucket(raw: string | undefined, range: Range): Bucket {
   if (raw === '5min' || raw === 'hour' || raw === 'day') return raw;
-  if (range === 'today') return '5min';
-  if (range === '24h') return 'hour';
+  if (range === 'today' || range === '24h') return 'hour';
   return 'day';
 }
