@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, ScrollText, Boxes, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, ScrollText, Boxes, Layers, type LucideIcon } from 'lucide-react';
 import { RangePicker } from '@/components/range-picker';
 import { OverviewPage } from '@/pages/overview';
 import { LogsPage } from '@/pages/logs';
 import { ByModelPage } from '@/pages/by-model';
+import { SessionsPage } from '@/pages/sessions';
 import type { Range } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-type Tab = 'overview' | 'logs' | 'models';
+type Tab = 'overview' | 'logs' | 'models' | 'sessions';
 
 const TABS: { value: Tab; label: string; icon: LucideIcon }[] = [
   { value: 'overview', label: 'Overview', icon: LayoutDashboard },
   { value: 'logs', label: 'Logs', icon: ScrollText },
   { value: 'models', label: 'Models', icon: Boxes },
+  { value: 'sessions', label: 'Sessions', icon: Layers },
 ];
 
 const TAB_VALUES = TABS.map(t => t.value);
@@ -41,9 +43,12 @@ export function App() {
     } else if (url.searchParams.get('tab') !== tab) {
       url.searchParams.set('tab', tab); changed = true;
     }
-    if (tab !== 'logs') {
+    if (tab !== 'logs' && tab !== 'sessions') {
       if (url.searchParams.has('log')) { url.searchParams.delete('log'); changed = true; }
       if (url.searchParams.has('pane')) { url.searchParams.delete('pane'); changed = true; }
+    }
+    if (tab !== 'sessions') {
+      if (url.searchParams.has('session')) { url.searchParams.delete('session'); changed = true; }
     }
     if (changed) window.history.replaceState(null, '', url.toString());
   }, [tab]);
@@ -94,6 +99,7 @@ export function App() {
         {tab === 'overview' && <OverviewPage range={range} />}
         {tab === 'logs' && <LogsPage range={range} />}
         {tab === 'models' && <ByModelPage range={range} />}
+        {tab === 'sessions' && <SessionsPage range={range} />}
       </main>
     </div>
   );

@@ -8,6 +8,7 @@ export function logRequest(data: RequestLogData): void {
       .values({
         requestId: data.requestId,
         timestamp: data.timestamp,
+        sessionId: data.sessionId,
         model: data.model,
         provider: data.provider,
         realModel: data.realModel,

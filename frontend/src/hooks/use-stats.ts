@@ -40,3 +40,20 @@ export function useLogDetail(requestId: string | null) {
     enabled: requestId != null,
   });
 }
+
+export function useSessions(range: Range, cursor?: string) {
+  return useQuery({
+    queryKey: ['sessions', range, cursor],
+    queryFn: () => api.sessions(range, cursor),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useSessionDetail(sessionId: string | null) {
+  return useQuery({
+    queryKey: ['session-detail', sessionId],
+    queryFn: () => api.sessionDetail(sessionId!),
+    enabled: sessionId != null,
+    refetchInterval: 30_000,
+  });
+}

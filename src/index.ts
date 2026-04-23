@@ -14,6 +14,7 @@ const TARGET_CREATE_SQL = `CREATE TABLE request_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   request_id TEXT NOT NULL,
   timestamp TEXT NOT NULL,
+  session_id TEXT,
   model TEXT NOT NULL,
   provider TEXT,
   real_model TEXT,
@@ -33,7 +34,7 @@ const TARGET_CREATE_SQL = `CREATE TABLE request_logs (
 )`;
 
 const TARGET_COLUMNS = [
-  'id', 'request_id', 'timestamp', 'model', 'provider', 'real_model',
+  'id', 'request_id', 'timestamp', 'session_id', 'model', 'provider', 'real_model',
   'input_tokens', 'output_tokens', 'total_tokens', 'cost',
   'cache_read_input_tokens', 'cache_creation_input_tokens',
   'duration_ms', 'ttft_ms', 'tpot_ms',

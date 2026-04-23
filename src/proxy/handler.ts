@@ -42,6 +42,20 @@ function scrubSystem(system: unknown): unknown {
   return system;
 }
 
+function extractSessionId(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== 'object') return null;
+  const userId = (metadata as any).user_id;
+  if (typeof userId !== 'string') return null;
+  try {
+    const parsed = JSON.parse(userId);
+    const sid = parsed?.session_id;
+    return typeof sid === 'string' && sid.length > 0 ? sid : null;
+  } catch {
+    console.warn('[iris] failed to parse metadata.user_id as JSON');
+    return null;
+  }
+}
+
 // ─── Log State ───
 
 interface LogState {
@@ -209,6 +223,7 @@ async function parseForLogging(
 export interface RequestLogData {
   requestId: string;
   timestamp: string;
+  sessionId: string | null;
   model: string;
   provider: string | null;
   realModel: string | null;
@@ -255,6 +270,7 @@ function buildLogData(
   requestId: string,
   startTime: number,
   requestModel: string,
+  sessionId: string | null,
   state: LogState,
   status: 'success' | 'error',
   errorMessage: string | null,
@@ -269,6 +285,7 @@ function buildLogData(
   return {
     requestId,
     timestamp: new Date().toISOString(),
+    sessionId,
     model: requestModel,
     provider: state.provider,
     realModel: state.model || null,
@@ -320,7 +337,8 @@ export async function proxyHandler(c: Context) {
 
   const resolvedModel = resolveModel(body.model);
   const wantsStream = body.stream === true;
-  const { metadata: _metadata, ...bodyWithoutMetadata } = body;
+  const { metadata, ...bodyWithoutMetadata } = body;
+  const sessionId = extractSessionId(metadata);
   if ('system' in bodyWithoutMetadata) {
     bodyWithoutMetadata.system = scrubSystem(bodyWithoutMetadata.system);
   }
@@ -354,7 +372,7 @@ export async function proxyHandler(c: Context) {
     if (logCallback) {
       setImmediate(() =>
         logCallback!(
-          buildLogData(requestId, startTime, body.model, state, 'error', `Connection failed: ${err.message}`),
+          buildLogData(requestId, startTime, body.model, sessionId, state, 'error', `Connection failed: ${err.message}`),
         ),
       );
     }
@@ -389,7 +407,7 @@ export async function proxyHandler(c: Context) {
     if (logCallback) {
       setImmediate(() =>
         logCallback!(
-          buildLogData(requestId, startTime, body.model, state, 'error', `Upstream ${upstreamRes.status}: ${errorText}`),
+          buildLogData(requestId, startTime, body.model, sessionId, state, 'error', `Upstream ${upstreamRes.status}: ${errorText}`),
         ),
       );
     }
@@ -435,7 +453,7 @@ export async function proxyHandler(c: Context) {
     if (logCallback) {
       setImmediate(() =>
         logCallback!(
-          buildLogData(requestId, startTime, body.model, logState, status, errorMsg),
+          buildLogData(requestId, startTime, body.model, sessionId, logState, status, errorMsg),
         ),
       );
     }

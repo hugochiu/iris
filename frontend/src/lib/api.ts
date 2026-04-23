@@ -72,6 +72,7 @@ export interface LogRow {
   id: number;
   requestId: string;
   timestamp: string;
+  sessionId: string | null;
   model: string;
   provider: string | null;
   realModel: string | null;
@@ -118,6 +119,47 @@ export interface LogsQuery {
   hasToolUse?: 'true' | 'false';
 }
 
+export interface SessionSummary {
+  sessionId: string;
+  requestCount: number;
+  totalCost: number;
+  totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  firstTimestamp: string;
+  lastTimestamp: string;
+  modelCount: number;
+  models: string[];
+  hasError: boolean;
+}
+
+export interface SessionsPage {
+  items: SessionSummary[];
+  nextCursor: string | null;
+}
+
+export interface SessionTimeseriesPoint {
+  ts: string;
+  cost: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  requestId: string;
+}
+
+export interface SessionModelBreakdown {
+  model: string;
+  count: number;
+  cost: number;
+}
+
+export interface SessionDetail {
+  summary: SessionSummary;
+  timeseries: SessionTimeseriesPoint[];
+  requests: LogRow[];
+  modelBreakdown: SessionModelBreakdown[];
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
@@ -141,4 +183,8 @@ export const api = {
     get<LogsPage>(`/api/logs${qs(q as Record<string, string | number | undefined>)}`),
   logDetail: (requestId: string) =>
     get<LogDetail>(`/api/logs/${encodeURIComponent(requestId)}`),
+  sessions: (range: Range, cursor?: string) =>
+    get<SessionsPage>(`/api/stats/sessions${qs({ range, cursor })}`),
+  sessionDetail: (sessionId: string) =>
+    get<SessionDetail>(`/api/stats/sessions/${encodeURIComponent(sessionId)}`),
 };
