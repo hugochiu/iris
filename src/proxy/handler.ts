@@ -26,6 +26,22 @@ function createAnthropicError(status: number, message: string): object {
   };
 }
 
+function scrubText(text: string): string {
+  return text.replace(/^Git user: .+$/gm, 'Git user: anonymous');
+}
+
+function scrubSystem(system: unknown): unknown {
+  if (typeof system === 'string') return scrubText(system);
+  if (Array.isArray(system)) {
+    return system.map((block: any) =>
+      block?.type === 'text' && typeof block.text === 'string'
+        ? { ...block, text: scrubText(block.text) }
+        : block,
+    );
+  }
+  return system;
+}
+
 // ─── Log State ───
 
 interface LogState {
@@ -305,6 +321,9 @@ export async function proxyHandler(c: Context) {
   const resolvedModel = resolveModel(body.model);
   const wantsStream = body.stream === true;
   const { metadata: _metadata, ...bodyWithoutMetadata } = body;
+  if ('system' in bodyWithoutMetadata) {
+    bodyWithoutMetadata.system = scrubSystem(bodyWithoutMetadata.system);
+  }
   // Always request streaming upstream so we can tee for logging; we re-assemble
   // a single JSON response for clients that didn't ask for stream.
   const requestBody = { ...bodyWithoutMetadata, model: resolvedModel, stream: true };
