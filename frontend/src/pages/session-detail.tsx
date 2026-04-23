@@ -194,6 +194,7 @@ export function SessionDetailPage({
                 <Th>Model</Th>
                 <Th className="text-right">In</Th>
                 <Th className="text-right">Out</Th>
+                <Th className="text-right">Cache R/W</Th>
                 <Th className="text-right">Cost</Th>
                 <Th className="text-right">Dur</Th>
                 <Th>Status</Th>
@@ -202,7 +203,7 @@ export function SessionDetailPage({
             </thead>
             <tbody>
               {requests.length === 0 && (
-                <tr><td colSpan={8} className="py-8 text-center text-muted">No requests.</td></tr>
+                <tr><td colSpan={9} className="py-8 text-center text-muted">No requests.</td></tr>
               )}
               {requests.map(row => (
                 <tr
@@ -219,6 +220,9 @@ export function SessionDetailPage({
                   </Td>
                   <Td className="text-right tabular-nums">{formatNumber(row.inputTokens)}</Td>
                   <Td className="text-right tabular-nums">{formatNumber(row.outputTokens)}</Td>
+                  <Td className="text-right tabular-nums text-muted">
+                    {formatNumber(row.cacheReadInputTokens)}/{formatNumber(row.cacheCreationInputTokens)}
+                  </Td>
                   <Td className="text-right tabular-nums text-accent">{row.cost != null ? formatCost(row.cost) : '—'}</Td>
                   <Td className="text-right tabular-nums">{formatDuration(row.durationMs)}</Td>
                   <Td>

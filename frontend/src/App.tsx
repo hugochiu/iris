@@ -12,9 +12,9 @@ type Tab = 'overview' | 'logs' | 'models' | 'sessions';
 
 const TABS: { value: Tab; label: string; icon: LucideIcon }[] = [
   { value: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { value: 'sessions', label: 'Sessions', icon: Layers },
   { value: 'logs', label: 'Logs', icon: ScrollText },
   { value: 'models', label: 'Models', icon: Boxes },
-  { value: 'sessions', label: 'Sessions', icon: Layers },
 ];
 
 const TAB_VALUES = TABS.map(t => t.value);
