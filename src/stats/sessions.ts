@@ -8,7 +8,67 @@ function stripContextTags(text: string): string {
   return text.replace(/<(system-reminder|ide_opened_file|ide_selection|command-[a-z-]+)>[\s\S]*?<\/\1>/gi, '');
 }
 
-function extractToolNames(responseBodyText: string | null): string[] | null {
+export interface ToolCall {
+  name: string;
+  label: string | null;
+}
+
+const MAX_LABEL = 48;
+
+function truncateHead(s: string): string {
+  const one = s.replace(/\s+/g, ' ').trim();
+  return one.length > MAX_LABEL ? one.slice(0, MAX_LABEL - 1) + '…' : one;
+}
+
+function truncateTail(s: string): string {
+  const one = s.replace(/\s+/g, ' ').trim();
+  return one.length > MAX_LABEL ? '…' + one.slice(one.length - (MAX_LABEL - 1)) : one;
+}
+
+function extractToolLabel(name: string, input: unknown): string | null {
+  if (!input || typeof input !== 'object') return null;
+  const i = input as Record<string, unknown>;
+  const pick = (k: string): string | null =>
+    typeof i[k] === 'string' && (i[k] as string).length > 0 ? (i[k] as string) : null;
+  switch (name) {
+    case 'Read':
+    case 'Edit':
+    case 'Write':
+    case 'NotebookEdit': {
+      const p = pick('file_path') ?? pick('notebook_path');
+      return p ? truncateTail(p) : null;
+    }
+    case 'Bash': {
+      const c = pick('command');
+      return c ? truncateHead(c) : null;
+    }
+    case 'Grep': {
+      const p = pick('pattern');
+      return p ? truncateHead(p) : null;
+    }
+    case 'Glob': {
+      const p = pick('pattern');
+      return p ? truncateHead(p) : null;
+    }
+    case 'WebFetch': {
+      const u = pick('url');
+      return u ? truncateTail(u) : null;
+    }
+    case 'WebSearch': {
+      const q = pick('query');
+      return q ? truncateHead(q) : null;
+    }
+    case 'Task':
+    case 'Agent': {
+      const d = pick('description') ?? pick('subagent_type');
+      return d ? truncateHead(d) : null;
+    }
+    default:
+      return null;
+  }
+}
+
+function extractToolCalls(responseBodyText: string | null): ToolCall[] | null {
   if (!responseBodyText) return null;
   let msg: { content?: unknown };
   try {
@@ -18,13 +78,13 @@ function extractToolNames(responseBodyText: string | null): string[] | null {
   }
   const content = msg?.content;
   if (!Array.isArray(content)) return null;
-  const names: string[] = [];
-  for (const block of content as Array<{ type?: string; name?: string }>) {
+  const calls: ToolCall[] = [];
+  for (const block of content as Array<{ type?: string; name?: string; input?: unknown }>) {
     if (block?.type === 'tool_use' && typeof block.name === 'string' && block.name) {
-      names.push(block.name);
+      calls.push({ name: block.name, label: extractToolLabel(block.name, block.input) });
     }
   }
-  return names.length > 0 ? names : null;
+  return calls.length > 0 ? calls : null;
 }
 
 function extractLatestUserPreview(bodyText: string | null): string | null {
@@ -169,15 +229,15 @@ export async function sessionDetailHandler(c: Context) {
         .all()
     : [];
   const previewMap = new Map<string, string | null>();
-  const toolNamesMap = new Map<string, string[] | null>();
+  const toolCallsMap = new Map<string, ToolCall[] | null>();
   for (const p of payloadRows) {
     previewMap.set(p.requestId, extractLatestUserPreview(p.requestBody));
-    toolNamesMap.set(p.requestId, extractToolNames(p.responseBody));
+    toolCallsMap.set(p.requestId, extractToolCalls(p.responseBody));
   }
   const requestsWithPreview = requests.map((r) => ({
     ...r,
     preview: previewMap.get(r.requestId) ?? null,
-    toolNames: toolNamesMap.get(r.requestId) ?? null,
+    toolCalls: toolCallsMap.get(r.requestId) ?? null,
   }));
 
   const modelBreakdown = db

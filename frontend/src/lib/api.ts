@@ -154,9 +154,14 @@ export interface SessionModelBreakdown {
   cost: number;
 }
 
+export interface ToolCall {
+  name: string;
+  label: string | null;
+}
+
 export interface SessionRequestRow extends LogRow {
   preview: string | null;
-  toolNames: string[] | null;
+  toolCalls: ToolCall[] | null;
 }
 
 export interface SessionDetail {

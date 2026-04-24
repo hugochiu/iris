@@ -228,10 +228,12 @@ export function SessionDetailPage({
                   </Td>
                   <Td>
                     {row.hasToolUse && (
-                      row.toolNames && row.toolNames.length > 0 ? (
+                      row.toolCalls && row.toolCalls.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
-                          {row.toolNames.map((name, i) => (
-                            <Badge key={i} tone="accent">{name}</Badge>
+                          {row.toolCalls.map((t, i) => (
+                            <Badge key={i} tone="accent" title={t.label ? `${t.name}: ${t.label}` : t.name}>
+                              {t.name}{t.label && <span className="font-normal opacity-75">: {t.label}</span>}
+                            </Badge>
                           ))}
                         </div>
                       ) : (

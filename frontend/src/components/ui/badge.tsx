@@ -14,10 +14,12 @@ const toneClass: Record<Tone, string> = {
 export function Badge({
   tone = 'neutral',
   className,
+  title,
   children,
-}: PropsWithChildren<{ tone?: Tone; className?: string }>) {
+}: PropsWithChildren<{ tone?: Tone; className?: string; title?: string }>) {
   return (
     <span
+      title={title}
       className={cn(
         'inline-flex items-center rounded-md border px-1.5 py-0.5 text-xs font-medium',
         toneClass[tone],
