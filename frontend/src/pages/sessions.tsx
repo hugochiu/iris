@@ -91,12 +91,12 @@ function SessionsList({
             <thead>
               <tr className="text-left text-muted border-b border-border">
                 <Th>Session</Th>
+                <Th className="text-right">Total cost</Th>
                 <Th>Started</Th>
                 <Th className="text-right">Span</Th>
                 <Th className="text-right">Active</Th>
                 <Th className="text-right">Requests</Th>
                 <Th>Models</Th>
-                <Th className="text-right">Total cost</Th>
                 <Th>Status</Th>
               </tr>
             </thead>
@@ -128,6 +128,7 @@ function SessionsList({
                       )}
                       <div className="font-mono text-muted text-[11px]">{s.sessionId.slice(0, 12)}…</div>
                     </Td>
+                    <Td className="text-right tabular-nums text-accent">{formatCost(s.totalCost)}</Td>
                     <Td className="tabular-nums text-muted">{formatTimestamp(s.firstTimestamp)}</Td>
                     <Td className="text-right tabular-nums"><span title="First request → last request">{formatLongDuration(durationMs)}</span></Td>
                     <Td className="text-right tabular-nums"><span title="Sum of per-request processing time">{formatLongDuration(s.activeDurationMs)}</span></Td>
@@ -143,10 +144,17 @@ function SessionsList({
                         {extra > 0 && <div className="text-fg">+{extra} more</div>}
                       </div>
                     </Td>
-                    <Td className="text-right tabular-nums text-accent">{formatCost(s.totalCost)}</Td>
                     <Td>
-                      <Badge tone={s.hasError ? 'danger' : 'success'}>
-                        {s.hasError ? 'has error' : 'ok'}
+                      <Badge
+                        tone={
+                          s.errorCount === 0
+                            ? 'success'
+                            : s.errorCount / s.requestCount > 0.2
+                              ? 'danger'
+                              : 'warning'
+                        }
+                      >
+                        {s.requestCount - s.errorCount}/{s.requestCount}
                       </Badge>
                     </Td>
                   </tr>

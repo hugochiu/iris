@@ -10,7 +10,12 @@ const MAX_LIMIT = 200;
 
 const sessionAggregateColumns = {
   sessionId: requestLogs.sessionId,
-  sessionName: sql<string | null>`max(${requestLogs.sessionName})`,
+  sessionName: sql<string | null>`(
+    select session_name from request_logs r2
+    where r2.session_id = request_logs.session_id
+    order by r2.timestamp asc
+    limit 1
+  )`,
   requestCount: sql<number>`count(*)`,
   totalCost: sql<number>`coalesce(sum(${requestLogs.cost}), 0)`,
   totalTokens: sql<number>`coalesce(sum(${requestLogs.totalTokens}), 0)`,
@@ -53,7 +58,7 @@ function shapeSession(r: RawSessionRow) {
     lastTimestamp: r.lastTimestamp,
     modelCount: Number(r.modelCount),
     models: (r.models ?? '').split(',').filter(Boolean),
-    hasError: Number(r.errorCount) > 0,
+    errorCount: Number(r.errorCount),
     activeDurationMs: Number(r.activeDurationMs),
   };
 }

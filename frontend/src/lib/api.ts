@@ -131,7 +131,7 @@ export interface SessionSummary {
   lastTimestamp: string;
   modelCount: number;
   models: string[];
-  hasError: boolean;
+  errorCount: number;
   activeDurationMs: number;
 }
 
