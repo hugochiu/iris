@@ -163,6 +163,7 @@ export interface ToolCall {
 export interface SessionRequestRow extends LogRow {
   preview: string | null;
   toolCalls: ToolCall[] | null;
+  previewMsgIndex: number | null;
 }
 
 export interface SessionDetail {

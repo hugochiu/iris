@@ -1,122 +1,9 @@
 import type { Context } from 'hono';
-import { and, asc, eq, inArray, isNotNull, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, isNotNull, sql, type SQL } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { requestLogs, requestPayloads } from '../db/schema.js';
+import { requestLogs } from '../db/schema.js';
 import { parseRange } from './range.js';
-
-function stripContextTags(text: string): string {
-  return text.replace(/<(system-reminder|ide_opened_file|ide_selection|command-[a-z-]+)>[\s\S]*?<\/\1>/gi, '');
-}
-
-export interface ToolCall {
-  name: string;
-  label: string | null;
-}
-
-const MAX_LABEL = 48;
-
-function truncateHead(s: string): string {
-  const one = s.replace(/\s+/g, ' ').trim();
-  return one.length > MAX_LABEL ? one.slice(0, MAX_LABEL - 1) + '…' : one;
-}
-
-function truncateTail(s: string): string {
-  const one = s.replace(/\s+/g, ' ').trim();
-  return one.length > MAX_LABEL ? '…' + one.slice(one.length - (MAX_LABEL - 1)) : one;
-}
-
-function extractToolLabel(name: string, input: unknown): string | null {
-  if (!input || typeof input !== 'object') return null;
-  const i = input as Record<string, unknown>;
-  const pick = (k: string): string | null =>
-    typeof i[k] === 'string' && (i[k] as string).length > 0 ? (i[k] as string) : null;
-  switch (name) {
-    case 'Read':
-    case 'Edit':
-    case 'Write':
-    case 'NotebookEdit': {
-      const p = pick('file_path') ?? pick('notebook_path');
-      return p ? truncateTail(p) : null;
-    }
-    case 'Bash': {
-      const c = pick('command');
-      return c ? truncateHead(c) : null;
-    }
-    case 'Grep': {
-      const p = pick('pattern');
-      return p ? truncateHead(p) : null;
-    }
-    case 'Glob': {
-      const p = pick('pattern');
-      return p ? truncateHead(p) : null;
-    }
-    case 'WebFetch': {
-      const u = pick('url');
-      return u ? truncateTail(u) : null;
-    }
-    case 'WebSearch': {
-      const q = pick('query');
-      return q ? truncateHead(q) : null;
-    }
-    case 'Task':
-    case 'Agent': {
-      const d = pick('description') ?? pick('subagent_type');
-      return d ? truncateHead(d) : null;
-    }
-    default:
-      return null;
-  }
-}
-
-function extractToolCalls(responseBodyText: string | null): ToolCall[] | null {
-  if (!responseBodyText) return null;
-  let msg: { content?: unknown };
-  try {
-    msg = JSON.parse(responseBodyText);
-  } catch {
-    return null;
-  }
-  const content = msg?.content;
-  if (!Array.isArray(content)) return null;
-  const calls: ToolCall[] = [];
-  for (const block of content as Array<{ type?: string; name?: string; input?: unknown }>) {
-    if (block?.type === 'tool_use' && typeof block.name === 'string' && block.name) {
-      calls.push({ name: block.name, label: extractToolLabel(block.name, block.input) });
-    }
-  }
-  return calls.length > 0 ? calls : null;
-}
-
-function extractLatestUserPreview(bodyText: string | null): string | null {
-  if (!bodyText) return null;
-  let body: { messages?: unknown };
-  try {
-    body = JSON.parse(bodyText);
-  } catch {
-    return null;
-  }
-  const messages = body?.messages;
-  if (!Array.isArray(messages)) return null;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i] as { role?: string; content?: unknown };
-    if (msg?.role !== 'user') continue;
-    const rawTexts: string[] = [];
-    if (typeof msg.content === 'string') {
-      rawTexts.push(msg.content);
-    } else if (Array.isArray(msg.content)) {
-      for (const b of msg.content as Array<{ type?: string; text?: string }>) {
-        if (b?.type === 'text' && typeof b.text === 'string') rawTexts.push(b.text);
-      }
-    }
-    for (const raw of rawTexts) {
-      const cleaned = stripContextTags(raw).replace(/\s+/g, ' ').trim();
-      if (cleaned) {
-        return cleaned.length > 200 ? '…' + cleaned.slice(cleaned.length - 199) : cleaned;
-      }
-    }
-  }
-  return null;
-}
+import type { ToolCall } from './session-meta.js';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -221,29 +108,16 @@ export async function sessionDetailHandler(c: Context) {
     .orderBy(asc(requestLogs.timestamp))
     .all();
 
-  const requestIds = requests.map((r) => r.requestId);
-  const payloadRows = requestIds.length > 0
-    ? db
-        .select({
-          requestId: requestPayloads.requestId,
-          requestBody: requestPayloads.requestBody,
-          responseBody: requestPayloads.responseBody,
-        })
-        .from(requestPayloads)
-        .where(inArray(requestPayloads.requestId, requestIds))
-        .all()
-    : [];
-  const previewMap = new Map<string, string | null>();
-  const toolCallsMap = new Map<string, ToolCall[] | null>();
-  for (const p of payloadRows) {
-    previewMap.set(p.requestId, extractLatestUserPreview(p.requestBody));
-    toolCallsMap.set(p.requestId, extractToolCalls(p.responseBody));
-  }
-  const requestsWithPreview = requests.map((r) => ({
-    ...r,
-    preview: previewMap.get(r.requestId) ?? null,
-    toolCalls: toolCallsMap.get(r.requestId) ?? null,
-  }));
+  const requestsWithPreview = requests.map((r) => {
+    let toolCalls: ToolCall[] | null = null;
+    if (r.toolCalls) {
+      try { toolCalls = JSON.parse(r.toolCalls) as ToolCall[]; } catch {}
+    }
+    const { toolCalls: _raw, ...rest } = r;
+    const previewMsgIndex =
+      r.previewMsgIndex == null || r.previewMsgIndex < 0 ? null : r.previewMsgIndex;
+    return { ...rest, preview: r.preview || null, toolCalls, previewMsgIndex };
+  });
 
   const modelBreakdown = db
     .select({

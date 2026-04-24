@@ -26,6 +26,9 @@ export function logRequest(data: RequestLogData): void {
         errorMessage: data.errorMessage,
         hasToolUse: data.hasToolUse,
         stopReason: data.stopReason,
+        preview: data.preview,
+        toolCalls: data.toolCalls,
+        previewMsgIndex: data.previewMsgIndex,
       })
       .run();
   } catch (err: any) {

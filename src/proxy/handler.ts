@@ -1,6 +1,10 @@
 import type { Context } from 'hono';
 import { stream } from 'hono/streaming';
 import { config } from '../config.js';
+import {
+  extractLatestUserPreviewFromMessages,
+  extractToolCallsFromContent,
+} from '../stats/session-meta.js';
 
 // ─── Utilities (inlined from deleted transform.ts) ───
 
@@ -269,6 +273,9 @@ export interface RequestLogData {
   errorMessage: string | null;
   hasToolUse: boolean;
   stopReason: string | null;
+  preview: string | null;
+  toolCalls: string | null;
+  previewMsgIndex: number | null;
 }
 
 type LogCallback = (data: RequestLogData) => void;
@@ -304,6 +311,9 @@ function buildLogData(
   state: LogState,
   status: 'success' | 'error',
   errorMessage: string | null,
+  preview: string | null,
+  toolCalls: string | null,
+  previewMsgIndex: number | null,
 ): RequestLogData {
   const ttftMs = state.firstTokenAt != null ? state.firstTokenAt - startTime : null;
   let tpotMs: number | null = null;
@@ -333,6 +343,9 @@ function buildLogData(
     errorMessage,
     hasToolUse: state.hasToolUse,
     stopReason: state.stopReason,
+    preview,
+    toolCalls,
+    previewMsgIndex,
   };
 }
 
@@ -371,6 +384,9 @@ export async function proxyHandler(c: Context) {
   const { metadata, ...bodyWithoutMetadata } = body;
   const sessionId = extractSessionId(metadata);
   const sessionName = extractFirstUserMessage(body.messages);
+  const previewInfo = extractLatestUserPreviewFromMessages(body.messages);
+  const preview = previewInfo?.text ?? null;
+  const previewMsgIndex = previewInfo?.msgIndex ?? null;
   if ('system' in bodyWithoutMetadata) {
     bodyWithoutMetadata.system = scrubSystem(bodyWithoutMetadata.system);
   }
@@ -404,7 +420,7 @@ export async function proxyHandler(c: Context) {
     if (logCallback) {
       setImmediate(() =>
         logCallback!(
-          buildLogData(requestId, startTime, body.model, sessionId, sessionName, state, 'error', `Connection failed: ${err.message}`),
+          buildLogData(requestId, startTime, body.model, sessionId, sessionName, state, 'error', `Connection failed: ${err.message}`, preview, null, previewMsgIndex),
         ),
       );
     }
@@ -439,7 +455,7 @@ export async function proxyHandler(c: Context) {
     if (logCallback) {
       setImmediate(() =>
         logCallback!(
-          buildLogData(requestId, startTime, body.model, sessionId, sessionName, state, 'error', `Upstream ${upstreamRes.status}: ${errorText}`),
+          buildLogData(requestId, startTime, body.model, sessionId, sessionName, state, 'error', `Upstream ${upstreamRes.status}: ${errorText}`, preview, null, previewMsgIndex),
         ),
       );
     }
@@ -482,10 +498,12 @@ export async function proxyHandler(c: Context) {
     const status = logState.finished ? 'success' : 'error';
     const errorMsg = logState.finished ? null : 'Stream ended without message_stop';
     const respBodyStr = logState.responseMessage ? safeStringify(logState.responseMessage) : null;
+    const toolCalls = extractToolCallsFromContent(logState.contentBlocks.filter(Boolean));
+    const toolCallsStr = toolCalls ? safeStringify(toolCalls) : null;
     if (logCallback) {
       setImmediate(() =>
         logCallback!(
-          buildLogData(requestId, startTime, body.model, sessionId, sessionName, logState, status, errorMsg),
+          buildLogData(requestId, startTime, body.model, sessionId, sessionName, logState, status, errorMsg, preview, toolCallsStr, previewMsgIndex),
         ),
       );
     }

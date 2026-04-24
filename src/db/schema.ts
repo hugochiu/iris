@@ -24,6 +24,9 @@ export const requestLogs = sqliteTable(
     hasToolUse: integer('has_tool_use', { mode: 'boolean' }).default(false),
     stopReason: text('stop_reason'),
     sessionName: text('session_name'),
+    preview: text('preview'),
+    toolCalls: text('tool_calls'),
+    previewMsgIndex: integer('preview_msg_index'),
   },
 );
 

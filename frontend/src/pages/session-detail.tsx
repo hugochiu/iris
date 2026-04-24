@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useSessionDetail } from '@/hooks/use-stats';
-import type { SessionTimeseriesPoint } from '@/lib/api';
+import type { SessionRequestRow, SessionTimeseriesPoint } from '@/lib/api';
 import { MetricCard } from '@/components/metric-card';
 import { Card, CardHeader, CardBody } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LogDetailDrawer } from '@/components/log-detail';
-import { formatCost, formatDuration, formatNumber, formatTimestamp } from '@/lib/format';
+import { formatCost, formatDuration, formatLongDuration, formatNumber, formatTimestamp } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
   ResponsiveContainer,
@@ -63,7 +63,13 @@ export function SessionDetailPage({
       </Button>
       <div className="min-w-0">
         {sessionName && (
-          <div className="text-sm font-medium truncate max-w-[600px]">{sessionName}</div>
+          <div
+            className="text-sm font-medium truncate max-w-[600px]"
+            style={{ direction: 'rtl', textAlign: 'left' }}
+            title={sessionName}
+          >
+            <bdi>{sessionName}</bdi>
+          </div>
         )}
         <div className="font-mono text-xs text-muted break-all">{sessionId}</div>
       </div>
@@ -96,19 +102,23 @@ export function SessionDetailPage({
     <div className="space-y-4">
       {renderHeader(summary.sessionName)}
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <MetricCard label="Total cost" value={formatCost(summary.totalCost)} tone="accent" />
         <MetricCard label="Total tokens" value={formatNumber(summary.totalTokens)} />
         <MetricCard label="Requests" value={formatNumber(summary.requestCount)} />
         <MetricCard
-          label="Duration"
-          value={formatDuration(durationMs)}
+          label="Span"
+          value={formatLongDuration(durationMs)}
           sub={formatTimestamp(summary.firstTimestamp)}
+        />
+        <MetricCard
+          label="Active"
+          value={formatLongDuration(summary.activeDurationMs)}
         />
         <MetricCard
           label="Models"
           value={String(summary.modelCount)}
-          sub={summary.models.join(', ')}
+          sub={<div className="space-y-0.5">{summary.models.map((m, i) => <div key={i}>{m}</div>)}</div>}
         />
       </div>
 
@@ -210,51 +220,64 @@ export function SessionDetailPage({
               {requests.length === 0 && (
                 <tr><td colSpan={9} className="py-8 text-center text-muted">No requests.</td></tr>
               )}
-              {[...requests].reverse().map(row => (
-                <tr
-                  key={row.id}
-                  onClick={() => setSelectedLog(row.requestId)}
-                  className="border-b border-border hover:bg-panel cursor-pointer"
-                >
-                  <Td className="tabular-nums font-mono text-muted align-top">{formatTimestamp(row.timestamp)}</Td>
-                  <Td>
-                    {row.preview && (
-                      <div className="mb-1 max-w-[420px] truncate" title={row.preview}>{row.preview}</div>
-                    )}
-                    <div className="font-mono text-muted text-[11px]">{row.model}</div>
-                    {row.realModel && row.realModel !== row.model && (
-                      <div className="text-muted text-[11px]">→ {row.realModel}</div>
-                    )}
-                  </Td>
-                  <Td>
-                    {row.hasToolUse && (
-                      row.toolCalls && row.toolCalls.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {row.toolCalls.map((t, i) => (
-                            <Badge key={i} tone="accent" title={t.label ? `${t.name}: ${t.label}` : t.name}>
-                              {t.name}{t.label && <span className="font-normal opacity-75">: {t.label}</span>}
-                            </Badge>
-                          ))}
+              {groupByTurn([...requests].reverse()).map((turn, ti) => (
+                <Fragment key={ti}>
+                  <tr className="bg-panel/60">
+                    <td colSpan={9} className="px-3 py-2 border-t-2 border-border">
+                      <div className="flex items-baseline gap-3">
+                        <div className="flex-1 min-w-0 text-[13px] text-fg break-words whitespace-pre-wrap">
+                          {turn.preview ?? <span className="text-muted italic">(no user text)</span>}
                         </div>
-                      ) : (
-                        <Badge tone="accent">tool</Badge>
-                      )
-                    )}
-                  </Td>
-                  <Td className="text-right tabular-nums">{formatNumber(row.inputTokens)}</Td>
-                  <Td className="text-right tabular-nums">{formatNumber(row.outputTokens)}</Td>
-                  <Td className="text-right tabular-nums text-muted">
-                    {formatNumber(row.cacheReadInputTokens)}/{formatNumber(row.cacheCreationInputTokens)}
-                  </Td>
-                  <Td className="text-right tabular-nums text-accent">{row.cost != null ? formatCost(row.cost) : '—'}</Td>
-                  <Td className="text-right tabular-nums">{formatDuration(row.durationMs)}</Td>
-                  <Td>
-                    <Badge tone={row.status === 'success' ? 'success' : 'danger'}>{row.status}</Badge>
-                    {row.stopReason && row.stopReason !== 'end_turn' && row.stopReason !== 'tool_use' && (
-                      <div className="text-muted text-[11px] mt-1">{row.stopReason}</div>
-                    )}
-                  </Td>
-                </tr>
+                        <div className="flex-shrink-0 text-[11px] text-muted tabular-nums">
+                          {turn.rows.length} req · {formatCost(turn.totalCost)} · {formatDuration(turn.totalDurationMs)}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  {turn.rows.map(row => (
+                    <tr
+                      key={row.id}
+                      onClick={() => setSelectedLog(row.requestId)}
+                      className="border-b border-border hover:bg-panel cursor-pointer"
+                    >
+                      <Td className="tabular-nums font-mono text-muted align-top">{formatTimestamp(row.timestamp)}</Td>
+                      <Td>
+                        <div className="font-mono text-muted text-[11px]">{row.model}</div>
+                        {row.realModel && row.realModel !== row.model && (
+                          <div className="text-muted text-[11px]">→ {row.realModel}</div>
+                        )}
+                      </Td>
+                      <Td>
+                        {row.hasToolUse && (
+                          row.toolCalls && row.toolCalls.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {row.toolCalls.map((t, i) => (
+                                <Badge key={i} tone="accent" title={t.label ? `${t.name}: ${t.label}` : t.name}>
+                                  {t.name}{t.label && <span className="font-normal opacity-75">: {t.label}</span>}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <Badge tone="accent">tool</Badge>
+                          )
+                        )}
+                      </Td>
+                      <Td className="text-right tabular-nums">{formatNumber(row.inputTokens)}</Td>
+                      <Td className="text-right tabular-nums">{formatNumber(row.outputTokens)}</Td>
+                      <Td className="text-right tabular-nums text-muted">
+                        {formatNumber(row.cacheReadInputTokens)}/{formatNumber(row.cacheCreationInputTokens)}
+                      </Td>
+                      <Td className="text-right tabular-nums text-accent">{row.cost != null ? formatCost(row.cost) : '—'}</Td>
+                      <Td className="text-right tabular-nums">{formatDuration(row.durationMs)}</Td>
+                      <Td>
+                        <Badge tone={row.status === 'success' ? 'success' : 'danger'}>{row.status}</Badge>
+                        {row.stopReason && row.stopReason !== 'end_turn' && row.stopReason !== 'tool_use' && (
+                          <div className="text-muted text-[11px] mt-1">{row.stopReason}</div>
+                        )}
+                      </Td>
+                    </tr>
+                  ))}
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -264,6 +287,43 @@ export function SessionDetailPage({
       <LogDetailDrawer requestId={selectedLog} onClose={() => setSelectedLog(null)} />
     </div>
   );
+}
+
+interface Turn {
+  preview: string | null;
+  msgIndex: number | null;
+  rows: SessionRequestRow[];
+  totalCost: number;
+  totalDurationMs: number;
+}
+
+// Groups consecutive rows belonging to the same user turn. Grouping key is
+// (preview, previewMsgIndex): when the user sends the exact same prompt twice
+// in a row, the second turn starts at a larger messages[] index so the two
+// runs don't collapse. previewMsgIndex is null on pre-migration rows; those
+// fall back to preview-only behavior.
+function groupByTurn(rows: SessionRequestRow[]): Turn[] {
+  const turns: Turn[] = [];
+  for (const row of rows) {
+    const last = turns[turns.length - 1];
+    const sameText = last && last.preview === (row.preview ?? null);
+    const sameIndex =
+      last && (last.msgIndex === row.previewMsgIndex || last.msgIndex == null || row.previewMsgIndex == null);
+    if (last && sameText && sameIndex) {
+      last.rows.push(row);
+      last.totalCost += row.cost ?? 0;
+      last.totalDurationMs += row.durationMs;
+    } else {
+      turns.push({
+        preview: row.preview ?? null,
+        msgIndex: row.previewMsgIndex,
+        rows: [row],
+        totalCost: row.cost ?? 0,
+        totalDurationMs: row.durationMs,
+      });
+    }
+  }
+  return turns;
 }
 
 function SessionTooltip({

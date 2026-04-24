@@ -4,7 +4,7 @@ import type { Range } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatCost, formatDuration, formatNumber, formatTimestamp } from '@/lib/format';
+import { formatCost, formatLongDuration, formatNumber, formatTimestamp } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { SessionDetailPage } from './session-detail';
 
@@ -107,12 +107,8 @@ function SessionsList({
                   >
                     <Td>
                       {s.sessionName ? (
-                        <div
-                          className="truncate max-w-[320px]"
-                          style={{ direction: 'rtl', textAlign: 'left' }}
-                          title={s.sessionName}
-                        >
-                          <bdi>{s.sessionName}</bdi>
+                        <div className="max-w-[420px] break-words whitespace-pre-wrap" title={s.sessionName}>
+                          {s.sessionName}
                         </div>
                       ) : (
                         <div className="text-muted italic">(no message)</div>
@@ -120,16 +116,18 @@ function SessionsList({
                       <div className="font-mono text-muted text-[11px]">{s.sessionId.slice(0, 12)}…</div>
                     </Td>
                     <Td className="tabular-nums text-muted">{formatTimestamp(s.firstTimestamp)}</Td>
-                    <Td className="text-right tabular-nums"><span title="First request → last request">{formatDuration(durationMs)}</span></Td>
-                    <Td className="text-right tabular-nums"><span title="Sum of per-request processing time">{formatDuration(s.activeDurationMs)}</span></Td>
+                    <Td className="text-right tabular-nums"><span title="First request → last request">{formatLongDuration(durationMs)}</span></Td>
+                    <Td className="text-right tabular-nums"><span title="Sum of per-request processing time">{formatLongDuration(s.activeDurationMs)}</span></Td>
                     <Td className="text-right tabular-nums">{formatNumber(s.requestCount)}</Td>
                     <Td>
                       <div
                         className="text-muted text-[11px] font-mono"
-                        title={s.models.join(', ')}
+                        title={s.models.join('\n')}
                       >
-                        {modelsPreview.join(', ')}
-                        {extra > 0 && <span className="text-fg ml-1">+{extra} more</span>}
+                        {modelsPreview.map((m, i) => (
+                          <div key={i}>{m}</div>
+                        ))}
+                        {extra > 0 && <div className="text-fg">+{extra} more</div>}
                       </div>
                     </Td>
                     <Td className="text-right tabular-nums text-accent">{formatCost(s.totalCost)}</Td>

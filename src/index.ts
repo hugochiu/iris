@@ -8,6 +8,7 @@ import { config } from './config.js';
 import { proxyHandler, setLogCallback, setPayloadCallback } from './proxy/handler.js';
 import { db, sqlite } from './db/index.js';
 import { logRequest, logPayload } from './db/logger.js';
+import { scheduleBackfillSessionMeta } from './db/backfill-session-meta.js';
 import { statsRoutes } from './stats/index.js';
 
 const TARGET_CREATE_SQL = `CREATE TABLE request_logs (
@@ -31,7 +32,10 @@ const TARGET_CREATE_SQL = `CREATE TABLE request_logs (
   error_message TEXT,
   has_tool_use INTEGER DEFAULT 0,
   stop_reason TEXT,
-  session_name TEXT
+  session_name TEXT,
+  preview TEXT,
+  tool_calls TEXT,
+  preview_msg_index INTEGER
 )`;
 
 const TARGET_COLUMNS = [
@@ -40,6 +44,7 @@ const TARGET_COLUMNS = [
   'cache_read_input_tokens', 'cache_creation_input_tokens',
   'duration_ms', 'ttft_ms', 'tpot_ms',
   'status', 'error_message', 'has_tool_use', 'stop_reason', 'session_name',
+  'preview', 'tool_calls', 'preview_msg_index',
 ];
 
 function migrateRequestLogs() {
@@ -105,6 +110,8 @@ setLogCallback(logRequest);
 if (config.logPayloads) {
   setPayloadCallback(logPayload);
 }
+
+scheduleBackfillSessionMeta();
 
 const app = new Hono();
 

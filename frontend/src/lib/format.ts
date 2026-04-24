@@ -16,6 +16,21 @@ export function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(2)}s`;
 }
 
+export function formatLongDuration(ms: number): string {
+  const totalSec = Math.round(ms / 1000);
+  if (totalSec <= 0) return '0s';
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const parts: string[] = [];
+  if (d) parts.push(`${d}d`);
+  if (h) parts.push(`${h}h`);
+  if (m) parts.push(`${m}m`);
+  if (s || parts.length === 0) parts.push(`${s}s`);
+  return parts.join(' ');
+}
+
 export function formatPercent(ratio: number): string {
   return `${(ratio * 100).toFixed(1)}%`;
 }

@@ -14,6 +14,9 @@ sqlite.pragma('journal_mode = WAL');
 // (e.g. add column + add index in one batch). Safe to re-run on every startup.
 ensureColumn('request_logs', 'session_id', 'TEXT');
 ensureColumn('request_logs', 'session_name', 'TEXT');
+ensureColumn('request_logs', 'preview', 'TEXT');
+ensureColumn('request_logs', 'tool_calls', 'TEXT');
+ensureColumn('request_logs', 'preview_msg_index', 'INTEGER');
 sqlite.exec(
   `CREATE INDEX IF NOT EXISTS request_logs_session_ts_idx ON request_logs(session_id, timestamp);`,
 );
