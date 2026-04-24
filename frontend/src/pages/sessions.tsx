@@ -126,7 +126,7 @@ function SessionsList({
                       ) : (
                         <div className="text-muted italic">(no message)</div>
                       )}
-                      <div className="font-mono text-muted text-[11px]">{s.sessionId.slice(0, 12)}…</div>
+                      <div className="font-mono text-muted text-[11px]">{s.sessionId}</div>
                     </Td>
                     <Td className="text-right tabular-nums text-accent">{formatCost(s.totalCost)}</Td>
                     <Td className="tabular-nums text-muted">{formatTimestamp(s.firstTimestamp)}</Td>
