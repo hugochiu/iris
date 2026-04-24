@@ -12,6 +12,13 @@ sqlite.pragma('journal_mode = WAL');
 
 // Idempotent guards for schema features that drizzle-kit push can't reliably apply
 // (e.g. add column + add index in one batch). Safe to re-run on every startup.
+// Must run before any module-level `sqlite.prepare(...)` that references these tables.
+sqlite.exec(`CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+)`);
+
 ensureColumn('request_logs', 'session_id', 'TEXT');
 ensureColumn('request_logs', 'session_name', 'TEXT');
 ensureColumn('request_logs', 'preview', 'TEXT');
