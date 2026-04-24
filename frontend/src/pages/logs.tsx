@@ -91,8 +91,6 @@ export function LogsPage({ range }: { range: Range }) {
           onChange={e => { setModelQuery(e.target.value); resetPagination(); }}
           className="h-8 rounded-md bg-white border border-border px-2 text-xs text-fg placeholder:text-muted w-56 focus:outline-none focus:ring-2 focus:ring-accent/30"
         />
-        <div className="flex-1" />
-        <Button variant="outline" size="sm" onClick={() => logs.refetch()}>Refresh</Button>
       </Card>
 
       <Card className="overflow-hidden">

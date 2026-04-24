@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
 import { useSessions } from '@/hooks/use-stats';
 import type { Range } from '@/lib/api';
 import { Card } from '@/components/ui/card';
@@ -73,18 +72,6 @@ function SessionsList({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => sessions.refetch()}
-          disabled={sessions.isFetching}
-          title="Refresh"
-        >
-          <RefreshCw className={cn('h-3.5 w-3.5 mr-1', sessions.isFetching && 'animate-spin')} />
-          Refresh
-        </Button>
-      </div>
       <Card className="overflow-hidden">
         <div className="overflow-x-auto scroll-thin">
           <table className="w-full text-xs">

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { LayoutDashboard, ScrollText, Boxes, Layers, Zap, Settings as SettingsIcon, type LucideIcon } from 'lucide-react';
 import { RangePicker } from '@/components/range-picker';
 import { OverviewPage } from '@/pages/overview';
@@ -44,10 +45,19 @@ function routeKeyFor(tab: Tab): string {
 }
 
 export function App() {
+  const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>(() => readTabFromUrl());
   const [range, setRange] = useState<Range>(() => readRangeFromUrl());
   const [sessionsKey, setSessionsKey] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const scrollPositions = useRef<Map<string, number>>(new Map());
+
+  function handleRefresh() {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    qc.invalidateQueries();
+    setTimeout(() => setIsRefreshing(false), 500);
+  }
 
   function onTabClick(next: Tab) {
     scrollPositions.current.set(routeKeyFor(tab), window.scrollY);
@@ -124,10 +134,21 @@ export function App() {
     <div className="min-h-screen">
       <header className="sticky top-0 z-10 border-b border-border bg-white/90 backdrop-blur">
         <div className="max-w-7xl mx-auto px-5 h-14 flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <img src="/favicon.svg" alt="" className="h-6 w-6" />
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            title="Refresh"
+            aria-label="Refresh"
+            className="flex items-center gap-2 rounded-md px-1.5 py-1 -mx-1.5 transition-colors hover:bg-panel cursor-pointer disabled:cursor-pointer"
+          >
+            <img
+              src="/favicon.svg"
+              alt=""
+              className={cn('h-6 w-6 transition-opacity', isRefreshing && 'opacity-40')}
+            />
             <span className="font-semibold text-base">Iris</span>
-          </div>
+          </button>
           <nav className="flex gap-1">
             {TABS.map(t => {
               const Icon = t.icon;

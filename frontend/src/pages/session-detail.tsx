@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useSessionDetail } from '@/hooks/use-stats';
 import type { SessionRequestRow, SessionTimeseriesPoint } from '@/lib/api';
 import { MetricCard } from '@/components/metric-card';
@@ -27,7 +27,7 @@ export function SessionDetailPage({
   sessionId: string;
   onBack: () => void;
 }) {
-  const { data, isLoading, error, refetch, isFetching } = useSessionDetail(sessionId);
+  const { data, isLoading, error } = useSessionDetail(sessionId);
   const [selectedLog, setSelectedLog] = useState<string | null>(
     () => new URLSearchParams(window.location.search).get('session_log'),
   );
@@ -74,16 +74,6 @@ export function SessionDetailPage({
         )}
         <div className="font-mono text-xs text-muted break-all">{sessionId}</div>
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => refetch()}
-        disabled={isFetching}
-        title="Refresh"
-      >
-        <RefreshCw className={cn('h-3.5 w-3.5 mr-1', isFetching && 'animate-spin')} />
-        Refresh
-      </Button>
     </div>
   );
 
