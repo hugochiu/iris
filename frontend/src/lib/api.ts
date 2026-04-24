@@ -66,6 +66,7 @@ export interface ModelStats {
   cacheHitRate: number;
   inputTokens: number;
   cacheReadTokens: number;
+  cacheCreationTokens: number;
 }
 
 export interface LogRow {
@@ -213,6 +214,7 @@ export interface OpenRouterModel {
   promptCost?: number;
   completionCost?: number;
   cacheReadCost?: number;
+  cacheWriteCost?: number;
 }
 
 export interface ProviderRouting {

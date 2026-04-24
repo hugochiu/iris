@@ -57,3 +57,11 @@ export function useSessionDetail(sessionId: string | null) {
     refetchInterval: 30_000,
   });
 }
+
+export function useOpenRouterModels() {
+  return useQuery({
+    queryKey: ['settings', 'openrouter-models'],
+    queryFn: () => api.settings.listOpenRouterModels(),
+    staleTime: 10 * 60_000,
+  });
+}

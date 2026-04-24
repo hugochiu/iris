@@ -54,6 +54,7 @@ type OpenRouterModel = {
   promptCost?: number;
   completionCost?: number;
   cacheReadCost?: number;
+  cacheWriteCost?: number;
 };
 let modelsCache: { at: number; items: OpenRouterModel[] } | null = null;
 const MODELS_TTL_MS = 10 * 60 * 1000;
@@ -98,6 +99,7 @@ export async function listOpenRouterModelsHandler(c: Context) {
       promptCost: pricePerMillion(pricing.prompt),
       completionCost: pricePerMillion(pricing.completion),
       cacheReadCost: pricePerMillion(pricing.input_cache_read),
+      cacheWriteCost: pricePerMillion(pricing.input_cache_write),
     };
   }).filter((m) => m.id);
 

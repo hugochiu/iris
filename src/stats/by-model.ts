@@ -19,6 +19,7 @@ export async function byModelHandler(c: Context) {
       successCount: sql<number>`sum(case when ${requestLogs.status} = 'success' then 1 else 0 end)`,
       inputTokensSum: sql<number>`coalesce(sum(${requestLogs.inputTokens}), 0)`,
       cacheReadTokensSum: sql<number>`coalesce(sum(${requestLogs.cacheReadInputTokens}), 0)`,
+      cacheCreationTokensSum: sql<number>`coalesce(sum(${requestLogs.cacheCreationInputTokens}), 0)`,
     })
     .from(requestLogs)
     .where(cutoffIso ? sql`${requestLogs.timestamp} >= ${cutoffIso}` : undefined)
@@ -42,6 +43,7 @@ export async function byModelHandler(c: Context) {
         cacheHitRate: cacheDenom > 0 ? cacheReadSum / cacheDenom : 0,
         inputTokens: inputSum,
         cacheReadTokens: cacheReadSum,
+        cacheCreationTokens: Number(r.cacheCreationTokensSum),
       };
     }),
   });
