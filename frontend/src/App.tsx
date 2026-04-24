@@ -1,20 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
-import { LayoutDashboard, ScrollText, Boxes, Layers, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, ScrollText, Boxes, Layers, Settings as SettingsIcon, type LucideIcon } from 'lucide-react';
 import { RangePicker } from '@/components/range-picker';
 import { OverviewPage } from '@/pages/overview';
 import { LogsPage } from '@/pages/logs';
 import { ByModelPage } from '@/pages/by-model';
 import { SessionsPage } from '@/pages/sessions';
+import { SettingsPage } from '@/pages/settings';
 import type { Range } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-type Tab = 'overview' | 'logs' | 'models' | 'sessions';
+type Tab = 'overview' | 'logs' | 'models' | 'sessions' | 'settings';
 
 const TABS: { value: Tab; label: string; icon: LucideIcon }[] = [
   { value: 'overview', label: 'Overview', icon: LayoutDashboard },
   { value: 'sessions', label: 'Sessions', icon: Layers },
   { value: 'logs', label: 'Logs', icon: ScrollText },
   { value: 'models', label: 'Models', icon: Boxes },
+  { value: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
 
 const TAB_VALUES = TABS.map(t => t.value);
@@ -152,6 +154,7 @@ export function App() {
         {tab === 'logs' && <LogsPage range={range} />}
         {tab === 'models' && <ByModelPage range={range} />}
         {tab === 'sessions' && <SessionsPage key={sessionsKey} range={range} />}
+        {tab === 'settings' && <SettingsPage />}
       </main>
     </div>
   );

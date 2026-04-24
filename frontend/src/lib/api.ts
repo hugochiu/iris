@@ -179,10 +179,50 @@ async function get<T>(path: string): Promise<T> {
   return res.json();
 }
 
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`${res.status} ${res.statusText}${text ? `: ${text}` : ''}`);
+  }
+  return res.json();
+}
+
 function qs(params: Record<string, string | number | undefined>): string {
   const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== '');
   if (entries.length === 0) return '';
   return '?' + entries.map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&');
+}
+
+export interface ModelMapping {
+  opus: string;
+  sonnet: string;
+  haiku: string;
+}
+
+export interface OpenRouterModel {
+  id: string;
+  name?: string;
+  context_length?: number;
+  maxCompletionTokens?: number;
+  modality?: string;
+  promptCost?: number;
+  completionCost?: number;
+  cacheReadCost?: number;
+}
+
+export interface ProviderRouting {
+  only: string[];
+  allowFallbacks: boolean;
+}
+
+export interface OpenRouterProvider {
+  slug: string;
+  name: string;
 }
 
 export const api = {
@@ -200,4 +240,15 @@ export const api = {
     get<SessionsPage>(`/api/stats/sessions${qs({ range, cursor })}`),
   sessionDetail: (sessionId: string) =>
     get<SessionDetail>(`/api/stats/sessions/${encodeURIComponent(sessionId)}`),
+  settings: {
+    getMapping: () => get<ModelMapping>('/api/settings/models'),
+    setMapping: (m: Partial<ModelMapping>) => post<ModelMapping>('/api/settings/models', m),
+    listOpenRouterModels: () =>
+      get<{ items: OpenRouterModel[]; cached: boolean }>('/api/settings/openrouter-models'),
+    getProviderRouting: () => get<ProviderRouting>('/api/settings/provider-routing'),
+    setProviderRouting: (r: ProviderRouting) =>
+      post<ProviderRouting>('/api/settings/provider-routing', r),
+    listOpenRouterProviders: () =>
+      get<{ items: OpenRouterProvider[]; cached: boolean }>('/api/settings/openrouter-providers'),
+  },
 };

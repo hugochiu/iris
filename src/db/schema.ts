@@ -38,3 +38,9 @@ export const requestPayloads = sqliteTable('request_payloads', {
   responseHeaders: text('response_headers'),
   responseBody: text('response_body'),
 });
+
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});

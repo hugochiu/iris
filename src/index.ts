@@ -106,6 +106,12 @@ for (const col of ['request_headers', 'forwarded_headers', 'response_headers']) 
   } catch {}
 }
 
+sqlite.exec(`CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+)`);
+
 setLogCallback(logRequest);
 if (config.logPayloads) {
   setPayloadCallback(logPayload);

@@ -1,6 +1,7 @@
 import type { Context } from 'hono';
 import { stream } from 'hono/streaming';
 import { config } from '../config.js';
+import { getModelMapping, getProviderRouting, type Tier } from '../db/settings.js';
 import {
   extractLatestUserPreviewFromMessages,
   extractToolCallsFromContent,
@@ -8,7 +9,20 @@ import {
 
 // ─── Utilities (inlined from deleted transform.ts) ───
 
+function detectTier(model: string): Tier | null {
+  const m = model.toLowerCase();
+  if (m.includes('opus')) return 'opus';
+  if (m.includes('sonnet')) return 'sonnet';
+  if (m.includes('haiku')) return 'haiku';
+  return null;
+}
+
 function resolveModel(model: string): string {
+  const tier = detectTier(model);
+  if (tier) {
+    const override = getModelMapping()[tier];
+    if (override) return override;
+  }
   if (model.includes('/')) return model;
   return `anthropic/${model}`;
 }
@@ -390,9 +404,13 @@ export async function proxyHandler(c: Context) {
   if ('system' in bodyWithoutMetadata) {
     bodyWithoutMetadata.system = scrubSystem(bodyWithoutMetadata.system);
   }
+  const routing = getProviderRouting();
+  const providerField = routing.only.length > 0
+    ? { provider: { only: routing.only, allow_fallbacks: routing.allowFallbacks } }
+    : {};
   // Always request streaming upstream so we can tee for logging; we re-assemble
   // a single JSON response for clients that didn't ask for stream.
-  const requestBody = { ...bodyWithoutMetadata, model: resolvedModel, stream: true };
+  const requestBody = { ...bodyWithoutMetadata, ...providerField, model: resolvedModel, stream: true };
   const upstreamUrl = `${config.openRouterBaseUrl}/messages`;
 
   const headers: Record<string, string> = {
@@ -425,7 +443,7 @@ export async function proxyHandler(c: Context) {
       );
     }
     if (payloadCallback) {
-      const reqBodyStr = safeStringify(bodyWithoutMetadata);
+      const reqBodyStr = safeStringify(requestBody);
       setImmediate(() =>
         payloadCallback!({
           requestId,
@@ -460,7 +478,7 @@ export async function proxyHandler(c: Context) {
       );
     }
     if (payloadCallback) {
-      const reqBodyStr = safeStringify(bodyWithoutMetadata);
+      const reqBodyStr = safeStringify(requestBody);
       const respHeadersJson = headersToJson(upstreamRes.headers);
       setImmediate(() =>
         payloadCallback!({
@@ -492,7 +510,7 @@ export async function proxyHandler(c: Context) {
 
   const logState = createLogState();
   const respHeadersJson = headersToJson(upstreamRes.headers);
-  const reqBodyStr = safeStringify(bodyWithoutMetadata);
+  const reqBodyStr = safeStringify(requestBody);
 
   const emitLogs = () => {
     const status = logState.finished ? 'success' : 'error';
