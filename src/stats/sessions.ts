@@ -1,8 +1,60 @@
 import type { Context } from 'hono';
-import { and, asc, eq, isNotNull, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, sql, type SQL } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { requestLogs } from '../db/schema.js';
+import { requestLogs, requestPayloads } from '../db/schema.js';
 import { parseRange } from './range.js';
+
+function stripContextTags(text: string): string {
+  return text.replace(/<(system-reminder|ide_opened_file|ide_selection|command-[a-z-]+)>[\s\S]*?<\/\1>/gi, '');
+}
+
+function extractToolNames(responseBodyText: string | null): string[] | null {
+  if (!responseBodyText) return null;
+  let msg: { content?: unknown };
+  try {
+    msg = JSON.parse(responseBodyText);
+  } catch {
+    return null;
+  }
+  const content = msg?.content;
+  if (!Array.isArray(content)) return null;
+  const names: string[] = [];
+  for (const block of content as Array<{ type?: string; name?: string }>) {
+    if (block?.type === 'tool_use' && typeof block.name === 'string' && block.name) {
+      names.push(block.name);
+    }
+  }
+  return names.length > 0 ? names : null;
+}
+
+function extractLatestUserPreview(bodyText: string | null): string | null {
+  if (!bodyText) return null;
+  let body: { messages?: unknown };
+  try {
+    body = JSON.parse(bodyText);
+  } catch {
+    return null;
+  }
+  const messages = body?.messages;
+  if (!Array.isArray(messages)) return null;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i] as { role?: string; content?: unknown };
+    if (msg?.role !== 'user') continue;
+    const rawTexts: string[] = [];
+    if (typeof msg.content === 'string') {
+      rawTexts.push(msg.content);
+    } else if (Array.isArray(msg.content)) {
+      for (const b of msg.content as Array<{ type?: string; text?: string }>) {
+        if (b?.type === 'text' && typeof b.text === 'string') rawTexts.push(b.text);
+      }
+    }
+    for (const raw of rawTexts) {
+      const cleaned = stripContextTags(raw).replace(/\s+/g, ' ').trim();
+      if (cleaned) return cleaned.slice(0, 200);
+    }
+  }
+  return null;
+}
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -104,6 +156,30 @@ export async function sessionDetailHandler(c: Context) {
     .orderBy(asc(requestLogs.timestamp))
     .all();
 
+  const requestIds = requests.map((r) => r.requestId);
+  const payloadRows = requestIds.length > 0
+    ? db
+        .select({
+          requestId: requestPayloads.requestId,
+          requestBody: requestPayloads.requestBody,
+          responseBody: requestPayloads.responseBody,
+        })
+        .from(requestPayloads)
+        .where(inArray(requestPayloads.requestId, requestIds))
+        .all()
+    : [];
+  const previewMap = new Map<string, string | null>();
+  const toolNamesMap = new Map<string, string[] | null>();
+  for (const p of payloadRows) {
+    previewMap.set(p.requestId, extractLatestUserPreview(p.requestBody));
+    toolNamesMap.set(p.requestId, extractToolNames(p.responseBody));
+  }
+  const requestsWithPreview = requests.map((r) => ({
+    ...r,
+    preview: previewMap.get(r.requestId) ?? null,
+    toolNames: toolNamesMap.get(r.requestId) ?? null,
+  }));
+
   const modelBreakdown = db
     .select({
       model: sql<string>`coalesce(${requestLogs.realModel}, ${requestLogs.model})`,
@@ -128,7 +204,7 @@ export async function sessionDetailHandler(c: Context) {
   return c.json({
     summary: shapeSession(summaryRow),
     timeseries,
-    requests,
+    requests: requestsWithPreview,
     modelBreakdown: modelBreakdown.map((m) => ({
       model: m.model,
       count: Number(m.count),

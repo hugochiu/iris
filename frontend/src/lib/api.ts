@@ -154,10 +154,15 @@ export interface SessionModelBreakdown {
   cost: number;
 }
 
+export interface SessionRequestRow extends LogRow {
+  preview: string | null;
+  toolNames: string[] | null;
+}
+
 export interface SessionDetail {
   summary: SessionSummary;
   timeseries: SessionTimeseriesPoint[];
-  requests: LogRow[];
+  requests: SessionRequestRow[];
   modelBreakdown: SessionModelBreakdown[];
 }
 

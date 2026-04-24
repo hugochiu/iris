@@ -197,30 +197,46 @@ export function SessionDetailPage({
               <tr className="text-left text-muted border-b border-border">
                 <Th>Time</Th>
                 <Th>Model</Th>
+                <Th>Tools</Th>
                 <Th className="text-right">In</Th>
                 <Th className="text-right">Out</Th>
                 <Th className="text-right">Cache R/W</Th>
                 <Th className="text-right">Cost</Th>
                 <Th className="text-right">Dur</Th>
                 <Th>Status</Th>
-                <Th>Flags</Th>
               </tr>
             </thead>
             <tbody>
               {requests.length === 0 && (
                 <tr><td colSpan={9} className="py-8 text-center text-muted">No requests.</td></tr>
               )}
-              {requests.map(row => (
+              {[...requests].reverse().map(row => (
                 <tr
                   key={row.id}
                   onClick={() => setSelectedLog(row.requestId)}
                   className="border-b border-border hover:bg-panel cursor-pointer"
                 >
-                  <Td className="tabular-nums font-mono text-muted">{formatTimestamp(row.timestamp)}</Td>
+                  <Td className="tabular-nums font-mono text-muted align-top">{formatTimestamp(row.timestamp)}</Td>
                   <Td>
-                    <div className="font-mono">{row.model}</div>
+                    {row.preview && (
+                      <div className="mb-1 max-w-[420px] truncate" title={row.preview}>{row.preview}</div>
+                    )}
+                    <div className="font-mono text-muted text-[11px]">{row.model}</div>
                     {row.realModel && row.realModel !== row.model && (
                       <div className="text-muted text-[11px]">→ {row.realModel}</div>
+                    )}
+                  </Td>
+                  <Td>
+                    {row.hasToolUse && (
+                      row.toolNames && row.toolNames.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {row.toolNames.map((name, i) => (
+                            <Badge key={i} tone="accent">{name}</Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <Badge tone="accent">tool</Badge>
+                      )
                     )}
                   </Td>
                   <Td className="text-right tabular-nums">{formatNumber(row.inputTokens)}</Td>
@@ -232,11 +248,8 @@ export function SessionDetailPage({
                   <Td className="text-right tabular-nums">{formatDuration(row.durationMs)}</Td>
                   <Td>
                     <Badge tone={row.status === 'success' ? 'success' : 'danger'}>{row.status}</Badge>
-                  </Td>
-                  <Td>
-                    {row.hasToolUse && <Badge tone="accent">tool</Badge>}
                     {row.stopReason && row.stopReason !== 'end_turn' && row.stopReason !== 'tool_use' && (
-                      <Badge tone="warning" className="ml-1">{row.stopReason}</Badge>
+                      <div className="text-muted text-[11px] mt-1">{row.stopReason}</div>
                     )}
                   </Td>
                 </tr>
