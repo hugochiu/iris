@@ -77,7 +77,9 @@ function extractFirstUserMessage(messages: unknown[]): string | null {
   }
   for (const raw of rawTexts) {
     const cleaned = stripContextTags(raw).replace(/\s+/g, ' ').trim();
-    if (cleaned) return cleaned.slice(0, 200);
+    if (cleaned) {
+      return cleaned.length > 200 ? '…' + cleaned.slice(cleaned.length - 199) : cleaned;
+    }
   }
   return null;
 }
