@@ -132,6 +132,7 @@ export interface SessionSummary {
   modelCount: number;
   models: string[];
   hasError: boolean;
+  activeDurationMs: number;
 }
 
 export interface SessionsPage {

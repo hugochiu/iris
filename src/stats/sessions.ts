@@ -134,6 +134,7 @@ const sessionAggregateColumns = {
   modelCount: sql<number>`count(distinct coalesce(${requestLogs.realModel}, ${requestLogs.model}))`,
   models: sql<string | null>`group_concat(distinct coalesce(${requestLogs.realModel}, ${requestLogs.model}))`,
   errorCount: sql<number>`sum(case when ${requestLogs.status} = 'error' then 1 else 0 end)`,
+  activeDurationMs: sql<number>`coalesce(sum(${requestLogs.durationMs}), 0)`,
 };
 
 type RawSessionRow = {
@@ -149,6 +150,7 @@ type RawSessionRow = {
   modelCount: number;
   models: string | null;
   errorCount: number;
+  activeDurationMs: number;
 };
 
 function shapeSession(r: RawSessionRow) {
@@ -165,6 +167,7 @@ function shapeSession(r: RawSessionRow) {
     modelCount: Number(r.modelCount),
     models: (r.models ?? '').split(',').filter(Boolean),
     hasError: Number(r.errorCount) > 0,
+    activeDurationMs: Number(r.activeDurationMs),
   };
 }
 

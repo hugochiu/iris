@@ -79,7 +79,8 @@ function SessionsList({
               <tr className="text-left text-muted border-b border-border">
                 <Th>Session</Th>
                 <Th>Started</Th>
-                <Th className="text-right">Duration</Th>
+                <Th className="text-right">Span</Th>
+                <Th className="text-right">Active</Th>
                 <Th className="text-right">Requests</Th>
                 <Th>Models</Th>
                 <Th className="text-right">Total cost</Th>
@@ -88,10 +89,10 @@ function SessionsList({
             </thead>
             <tbody>
               {sessions.isLoading && (
-                <tr><td colSpan={7} className="py-8 text-center text-muted">Loading…</td></tr>
+                <tr><td colSpan={8} className="py-8 text-center text-muted">Loading…</td></tr>
               )}
               {!sessions.isLoading && items.length === 0 && (
-                <tr><td colSpan={7} className="py-8 text-center text-muted">No sessions in this range.</td></tr>
+                <tr><td colSpan={8} className="py-8 text-center text-muted">No sessions in this range.</td></tr>
               )}
               {items.map(s => {
                 const durationMs =
@@ -106,14 +107,21 @@ function SessionsList({
                   >
                     <Td>
                       {s.sessionName ? (
-                        <div className="truncate max-w-[320px]">{s.sessionName}</div>
+                        <div
+                          className="truncate max-w-[320px]"
+                          style={{ direction: 'rtl', textAlign: 'left' }}
+                          title={s.sessionName}
+                        >
+                          <bdi>{s.sessionName}</bdi>
+                        </div>
                       ) : (
                         <div className="text-muted italic">(no message)</div>
                       )}
                       <div className="font-mono text-muted text-[11px]">{s.sessionId.slice(0, 12)}…</div>
                     </Td>
                     <Td className="tabular-nums text-muted">{formatTimestamp(s.firstTimestamp)}</Td>
-                    <Td className="text-right tabular-nums">{formatDuration(durationMs)}</Td>
+                    <Td className="text-right tabular-nums"><span title="First request → last request">{formatDuration(durationMs)}</span></Td>
+                    <Td className="text-right tabular-nums"><span title="Sum of per-request processing time">{formatDuration(s.activeDurationMs)}</span></Td>
                     <Td className="text-right tabular-nums">{formatNumber(s.requestCount)}</Td>
                     <Td>
                       <div
