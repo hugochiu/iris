@@ -14,6 +14,15 @@ export default {
         danger: 'hsl(0 72% 48%)',
         warning: 'hsl(32 95% 42%)',
       },
+      keyframes: {
+        'iris-progress': {
+          '0%': { transform: 'scaleX(0)' },
+          '100%': { transform: 'scaleX(1)' },
+        },
+      },
+      animation: {
+        'iris-progress': 'iris-progress 500ms linear forwards',
+      },
     },
   },
   plugins: [],

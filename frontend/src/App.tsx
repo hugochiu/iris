@@ -55,8 +55,10 @@ export function App() {
   function handleRefresh() {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    qc.invalidateQueries();
-    setTimeout(() => setIsRefreshing(false), 500);
+    setTimeout(() => {
+      qc.invalidateQueries();
+      setIsRefreshing(false);
+    }, 500);
   }
 
   function onTabClick(next: Tab) {
@@ -133,6 +135,9 @@ export function App() {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-10 border-b border-border bg-white/90 backdrop-blur">
+        {isRefreshing && (
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent origin-left will-change-transform animate-iris-progress" />
+        )}
         <div className="max-w-7xl mx-auto px-5 h-14 flex items-center gap-6">
           <button
             type="button"
@@ -142,11 +147,7 @@ export function App() {
             aria-label="Refresh"
             className="flex items-center gap-2 rounded-md px-1.5 py-1 -mx-1.5 transition-colors hover:bg-panel cursor-pointer disabled:cursor-pointer"
           >
-            <img
-              src="/favicon.svg"
-              alt=""
-              className={cn('h-6 w-6 transition-opacity', isRefreshing && 'opacity-40')}
-            />
+            <img src="/favicon.svg" alt="" className="h-6 w-6" />
             <span className="font-semibold text-base">Iris</span>
           </button>
           <nav className="flex gap-1">
