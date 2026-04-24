@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LayoutDashboard, ScrollText, Boxes, Layers, type LucideIcon } from 'lucide-react';
 import { RangePicker } from '@/components/range-picker';
 import { OverviewPage } from '@/pages/overview';
@@ -31,12 +31,22 @@ function readRangeFromUrl(): Range {
   return (RANGE_VALUES as string[]).includes(r ?? '') ? (r as Range) : DEFAULT_RANGE;
 }
 
+function routeKeyFor(tab: Tab): string {
+  if (tab === 'sessions') {
+    const s = new URLSearchParams(window.location.search).get('session');
+    return s ? `sessions:${s}` : 'sessions:list';
+  }
+  return tab;
+}
+
 export function App() {
   const [tab, setTab] = useState<Tab>(() => readTabFromUrl());
   const [range, setRange] = useState<Range>(() => readRangeFromUrl());
   const [sessionsKey, setSessionsKey] = useState(0);
+  const scrollPositions = useRef<Map<string, number>>(new Map());
 
   function onTabClick(next: Tab) {
+    scrollPositions.current.set(routeKeyFor(tab), window.scrollY);
     if (next === 'sessions' && tab === 'sessions') {
       const url = new URL(window.location.href);
       if (
@@ -49,11 +59,40 @@ export function App() {
         url.searchParams.delete('session_pane');
         window.history.replaceState(null, '', url.toString());
       }
+      scrollPositions.current.delete('sessions:list');
+      window.scrollTo(0, 0);
       setSessionsKey(k => k + 1);
       return;
     }
     setTab(next);
   }
+
+  useEffect(() => {
+    const target = scrollPositions.current.get(routeKeyFor(tab)) ?? 0;
+    if (target === 0) {
+      window.scrollTo(0, 0);
+      return;
+    }
+    let done = false;
+    const tryScroll = () => {
+      if (done) return true;
+      const maxY = document.documentElement.scrollHeight - window.innerHeight;
+      if (maxY >= target) {
+        window.scrollTo(0, target);
+        done = true;
+        return true;
+      }
+      return false;
+    };
+    if (tryScroll()) return;
+    const observer = new ResizeObserver(() => { tryScroll(); });
+    observer.observe(document.documentElement);
+    const timeout = setTimeout(() => { observer.disconnect(); }, 2000);
+    return () => {
+      observer.disconnect();
+      clearTimeout(timeout);
+    };
+  }, [tab, sessionsKey]);
 
   useEffect(() => {
     const url = new URL(window.location.href);
