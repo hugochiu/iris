@@ -34,6 +34,26 @@ function readRangeFromUrl(): Range {
 export function App() {
   const [tab, setTab] = useState<Tab>(() => readTabFromUrl());
   const [range, setRange] = useState<Range>(() => readRangeFromUrl());
+  const [sessionsKey, setSessionsKey] = useState(0);
+
+  function onTabClick(next: Tab) {
+    if (next === 'sessions' && tab === 'sessions') {
+      const url = new URL(window.location.href);
+      if (
+        url.searchParams.has('session') ||
+        url.searchParams.has('session_log') ||
+        url.searchParams.has('session_pane')
+      ) {
+        url.searchParams.delete('session');
+        url.searchParams.delete('session_log');
+        url.searchParams.delete('session_pane');
+        window.history.replaceState(null, '', url.toString());
+      }
+      setSessionsKey(k => k + 1);
+      return;
+    }
+    setTab(next);
+  }
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -42,13 +62,6 @@ export function App() {
       if (url.searchParams.has('tab')) { url.searchParams.delete('tab'); changed = true; }
     } else if (url.searchParams.get('tab') !== tab) {
       url.searchParams.set('tab', tab); changed = true;
-    }
-    if (tab !== 'logs' && tab !== 'sessions') {
-      if (url.searchParams.has('log')) { url.searchParams.delete('log'); changed = true; }
-      if (url.searchParams.has('pane')) { url.searchParams.delete('pane'); changed = true; }
-    }
-    if (tab !== 'sessions') {
-      if (url.searchParams.has('session')) { url.searchParams.delete('session'); changed = true; }
     }
     if (changed) window.history.replaceState(null, '', url.toString());
   }, [tab]);
@@ -78,7 +91,7 @@ export function App() {
               return (
                 <button
                   key={t.value}
-                  onClick={() => setTab(t.value)}
+                  onClick={() => onTabClick(t.value)}
                   className={cn(
                     'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md font-medium transition-colors',
                     tab === t.value ? 'bg-panel text-fg' : 'text-muted hover:text-fg hover:bg-panel',
@@ -99,7 +112,7 @@ export function App() {
         {tab === 'overview' && <OverviewPage range={range} />}
         {tab === 'logs' && <LogsPage range={range} />}
         {tab === 'models' && <ByModelPage range={range} />}
-        {tab === 'sessions' && <SessionsPage range={range} />}
+        {tab === 'sessions' && <SessionsPage key={sessionsKey} range={range} />}
       </main>
     </div>
   );

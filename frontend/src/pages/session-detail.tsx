@@ -29,19 +29,19 @@ export function SessionDetailPage({
 }) {
   const { data, isLoading, error } = useSessionDetail(sessionId);
   const [selectedLog, setSelectedLog] = useState<string | null>(
-    () => new URLSearchParams(window.location.search).get('log'),
+    () => new URLSearchParams(window.location.search).get('session_log'),
   );
 
   useEffect(() => {
     const url = new URL(window.location.href);
     if (selectedLog) {
-      if (url.searchParams.get('log') !== selectedLog) {
-        url.searchParams.set('log', selectedLog);
+      if (url.searchParams.get('session_log') !== selectedLog) {
+        url.searchParams.set('session_log', selectedLog);
         window.history.replaceState(null, '', url.toString());
       }
-    } else if (url.searchParams.has('log') || url.searchParams.has('pane')) {
-      url.searchParams.delete('log');
-      url.searchParams.delete('pane');
+    } else if (url.searchParams.has('session_log') || url.searchParams.has('session_pane')) {
+      url.searchParams.delete('session_log');
+      url.searchParams.delete('session_pane');
       window.history.replaceState(null, '', url.toString());
     }
   }, [selectedLog]);
@@ -64,9 +64,10 @@ export function SessionDetailPage({
       <div className="min-w-0">
         {sessionName && (
           <div
-            className="text-sm font-medium truncate max-w-[600px]"
+            className="text-sm font-medium truncate max-w-[600px] cursor-pointer hover:underline"
             style={{ direction: 'rtl', textAlign: 'left' }}
             title={sessionName}
+            onClick={onBack}
           >
             <bdi>{sessionName}</bdi>
           </div>
@@ -284,7 +285,7 @@ export function SessionDetailPage({
         </div>
       </Card>
 
-      <LogDetailDrawer requestId={selectedLog} onClose={() => setSelectedLog(null)} />
+      <LogDetailDrawer requestId={selectedLog} onClose={() => setSelectedLog(null)} paneParam="session_pane" />
     </div>
   );
 }

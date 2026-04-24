@@ -4,32 +4,35 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { JsonTree } from './json-tree';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 
 type Pane = 'request' | 'response' | 'headers';
 
 const PANES: Pane[] = ['request', 'response', 'headers'];
 
-function readPaneFromUrl(): Pane {
-  const p = new URLSearchParams(window.location.search).get('pane');
+function readPaneFromUrl(key: string): Pane {
+  const p = new URLSearchParams(window.location.search).get(key);
   return (PANES as string[]).includes(p ?? '') ? (p as Pane) : 'request';
 }
 
-function writePaneToUrl(pane: Pane) {
+function writePaneToUrl(key: string, pane: Pane) {
   const url = new URL(window.location.href);
-  if (url.searchParams.get('pane') === pane) return;
-  url.searchParams.set('pane', pane);
+  if (url.searchParams.get(key) === pane) return;
+  url.searchParams.set(key, pane);
   window.history.replaceState(null, '', url.toString());
 }
 
 export function LogDetailDrawer({
   requestId,
   onClose,
+  paneParam = 'pane',
 }: {
   requestId: string | null;
   onClose: () => void;
+  paneParam?: string;
 }) {
-  const [pane, setPane] = useState<Pane>(() => readPaneFromUrl());
+  const [pane, setPane] = useState<Pane>(() => readPaneFromUrl(paneParam));
   const { data, isLoading } = useLogDetail(requestId);
 
   useEffect(() => {
@@ -41,8 +44,8 @@ export function LogDetailDrawer({
   }, [onClose]);
 
   useEffect(() => {
-    if (requestId) writePaneToUrl(pane);
-  }, [pane, requestId]);
+    if (requestId) writePaneToUrl(paneParam, pane);
+  }, [pane, requestId, paneParam]);
 
   if (!requestId) return null;
 
@@ -60,7 +63,7 @@ export function LogDetailDrawer({
     };
   })();
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/30" onClick={onClose} />
       <div className="w-full max-w-3xl bg-white border-l border-border flex flex-col shadow-xl">
@@ -160,7 +163,8 @@ export function LogDetailDrawer({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
