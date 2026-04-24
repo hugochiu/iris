@@ -23,6 +23,7 @@ export const requestLogs = sqliteTable(
     errorMessage: text('error_message'),
     hasToolUse: integer('has_tool_use', { mode: 'boolean' }).default(false),
     stopReason: text('stop_reason'),
+    sessionName: text('session_name'),
   },
 );
 

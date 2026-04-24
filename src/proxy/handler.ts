@@ -56,6 +56,32 @@ function extractSessionId(metadata: unknown): string | null {
   }
 }
 
+// Claude Code 会在 messages[0] 里塞 <system-reminder>、<ide_opened_file>、
+// <ide_selection> 等上下文 block。识别"真正的用户文本"：去掉这些包裹标签的块。
+function stripContextTags(text: string): string {
+  return text.replace(/<(system-reminder|ide_opened_file|ide_selection|command-[a-z-]+)>[\s\S]*?<\/\1>/gi, '');
+}
+
+function extractFirstUserMessage(messages: unknown[]): string | null {
+  const first = messages?.[0] as { role?: string; content?: unknown } | undefined;
+  if (!first || first.role !== 'user') return null;
+  const rawTexts: string[] = [];
+  if (typeof first.content === 'string') {
+    rawTexts.push(first.content);
+  } else if (Array.isArray(first.content)) {
+    for (const b of first.content) {
+      if (b?.type === 'text' && typeof b.text === 'string') rawTexts.push(b.text);
+    }
+  } else {
+    return null;
+  }
+  for (const raw of rawTexts) {
+    const cleaned = stripContextTags(raw).replace(/\s+/g, ' ').trim();
+    if (cleaned) return cleaned.slice(0, 200);
+  }
+  return null;
+}
+
 // ─── Log State ───
 
 interface LogState {
@@ -224,6 +250,7 @@ export interface RequestLogData {
   requestId: string;
   timestamp: string;
   sessionId: string | null;
+  sessionName: string | null;
   model: string;
   provider: string | null;
   realModel: string | null;
@@ -271,6 +298,7 @@ function buildLogData(
   startTime: number,
   requestModel: string,
   sessionId: string | null,
+  sessionName: string | null,
   state: LogState,
   status: 'success' | 'error',
   errorMessage: string | null,
@@ -286,6 +314,7 @@ function buildLogData(
     requestId,
     timestamp: new Date().toISOString(),
     sessionId,
+    sessionName,
     model: requestModel,
     provider: state.provider,
     realModel: state.model || null,
@@ -339,6 +368,7 @@ export async function proxyHandler(c: Context) {
   const wantsStream = body.stream === true;
   const { metadata, ...bodyWithoutMetadata } = body;
   const sessionId = extractSessionId(metadata);
+  const sessionName = extractFirstUserMessage(body.messages);
   if ('system' in bodyWithoutMetadata) {
     bodyWithoutMetadata.system = scrubSystem(bodyWithoutMetadata.system);
   }
@@ -372,7 +402,7 @@ export async function proxyHandler(c: Context) {
     if (logCallback) {
       setImmediate(() =>
         logCallback!(
-          buildLogData(requestId, startTime, body.model, sessionId, state, 'error', `Connection failed: ${err.message}`),
+          buildLogData(requestId, startTime, body.model, sessionId, sessionName, state, 'error', `Connection failed: ${err.message}`),
         ),
       );
     }
@@ -407,7 +437,7 @@ export async function proxyHandler(c: Context) {
     if (logCallback) {
       setImmediate(() =>
         logCallback!(
-          buildLogData(requestId, startTime, body.model, sessionId, state, 'error', `Upstream ${upstreamRes.status}: ${errorText}`),
+          buildLogData(requestId, startTime, body.model, sessionId, sessionName, state, 'error', `Upstream ${upstreamRes.status}: ${errorText}`),
         ),
       );
     }
@@ -453,7 +483,7 @@ export async function proxyHandler(c: Context) {
     if (logCallback) {
       setImmediate(() =>
         logCallback!(
-          buildLogData(requestId, startTime, body.model, sessionId, logState, status, errorMsg),
+          buildLogData(requestId, startTime, body.model, sessionId, sessionName, logState, status, errorMsg),
         ),
       );
     }

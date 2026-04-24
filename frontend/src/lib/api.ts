@@ -121,6 +121,7 @@ export interface LogsQuery {
 
 export interface SessionSummary {
   sessionId: string;
+  sessionName: string | null;
   requestCount: number;
   totalCost: number;
   totalTokens: number;

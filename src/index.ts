@@ -30,7 +30,8 @@ const TARGET_CREATE_SQL = `CREATE TABLE request_logs (
   status TEXT NOT NULL,
   error_message TEXT,
   has_tool_use INTEGER DEFAULT 0,
-  stop_reason TEXT
+  stop_reason TEXT,
+  session_name TEXT
 )`;
 
 const TARGET_COLUMNS = [
@@ -38,7 +39,7 @@ const TARGET_COLUMNS = [
   'input_tokens', 'output_tokens', 'total_tokens', 'cost',
   'cache_read_input_tokens', 'cache_creation_input_tokens',
   'duration_ms', 'ttft_ms', 'tpot_ms',
-  'status', 'error_message', 'has_tool_use', 'stop_reason',
+  'status', 'error_message', 'has_tool_use', 'stop_reason', 'session_name',
 ];
 
 function migrateRequestLogs() {

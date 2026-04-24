@@ -56,19 +56,24 @@ export function SessionDetailPage({
     [data?.timeseries],
   );
 
-  const header = (
-    <div className="flex items-center gap-3">
+  const renderHeader = (sessionName: string | null) => (
+    <div className="flex items-center gap-3 min-w-0">
       <Button variant="outline" size="sm" onClick={onBack}>
         <ArrowLeft className="h-4 w-4 mr-1" /> Back to sessions
       </Button>
-      <div className="font-mono text-xs text-muted break-all">{sessionId}</div>
+      <div className="min-w-0">
+        {sessionName && (
+          <div className="text-sm font-medium truncate max-w-[600px]">{sessionName}</div>
+        )}
+        <div className="font-mono text-xs text-muted break-all">{sessionId}</div>
+      </div>
     </div>
   );
 
   if (isLoading) {
     return (
       <div className="space-y-4">
-        {header}
+        {renderHeader(null)}
         <Card className="p-8 text-center text-muted text-sm">Loading…</Card>
       </div>
     );
@@ -77,7 +82,7 @@ export function SessionDetailPage({
   if (error || !data) {
     return (
       <div className="space-y-4">
-        {header}
+        {renderHeader(null)}
         <Card className="p-8 text-center text-danger text-sm">Session not found.</Card>
       </div>
     );
@@ -89,7 +94,7 @@ export function SessionDetailPage({
 
   return (
     <div className="space-y-4">
-      {header}
+      {renderHeader(summary.sessionName)}
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <MetricCard label="Total cost" value={formatCost(summary.totalCost)} tone="accent" />

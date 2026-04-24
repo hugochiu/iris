@@ -104,7 +104,14 @@ function SessionsList({
                     onClick={() => onOpen(s.sessionId)}
                     className="border-b border-border hover:bg-panel cursor-pointer"
                   >
-                    <Td className="font-mono text-muted">{s.sessionId.slice(0, 12)}…</Td>
+                    <Td>
+                      {s.sessionName ? (
+                        <div className="truncate max-w-[320px]">{s.sessionName}</div>
+                      ) : (
+                        <div className="text-muted italic">(no message)</div>
+                      )}
+                      <div className="font-mono text-muted text-[11px]">{s.sessionId.slice(0, 12)}…</div>
+                    </Td>
                     <Td className="tabular-nums text-muted">{formatTimestamp(s.firstTimestamp)}</Td>
                     <Td className="text-right tabular-nums">{formatDuration(durationMs)}</Td>
                     <Td className="text-right tabular-nums">{formatNumber(s.requestCount)}</Td>

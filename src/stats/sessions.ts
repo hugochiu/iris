@@ -9,6 +9,7 @@ const MAX_LIMIT = 200;
 
 const sessionAggregateColumns = {
   sessionId: requestLogs.sessionId,
+  sessionName: sql<string | null>`max(${requestLogs.sessionName})`,
   requestCount: sql<number>`count(*)`,
   totalCost: sql<number>`coalesce(sum(${requestLogs.cost}), 0)`,
   totalTokens: sql<number>`coalesce(sum(${requestLogs.totalTokens}), 0)`,
@@ -23,6 +24,7 @@ const sessionAggregateColumns = {
 
 type RawSessionRow = {
   sessionId: string | null;
+  sessionName: string | null;
   requestCount: number;
   totalCost: number;
   totalTokens: number;
@@ -38,6 +40,7 @@ type RawSessionRow = {
 function shapeSession(r: RawSessionRow) {
   return {
     sessionId: r.sessionId ?? '',
+    sessionName: r.sessionName,
     requestCount: Number(r.requestCount),
     totalCost: Number(r.totalCost),
     totalTokens: Number(r.totalTokens),
