@@ -8,7 +8,7 @@ export interface ToolCall {
   label: string | null;
 }
 
-const MAX_LABEL = 48;
+const MAX_LABEL = 200;
 const MAX_PREVIEW = 200;
 
 function stripContextTags(text: string): string {
