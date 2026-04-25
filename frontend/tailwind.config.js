@@ -21,7 +21,7 @@ export default {
         },
       },
       animation: {
-        'iris-progress': 'iris-progress 500ms linear forwards',
+        'iris-progress': 'iris-progress 200ms linear forwards',
       },
     },
   },
