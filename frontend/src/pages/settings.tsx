@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronDown, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronRight, X } from 'lucide-react';
 import {
   api,
   type ModelMapping,
@@ -125,6 +125,63 @@ export function SettingsPage() {
   );
 }
 
+function ModelRow({
+  m,
+  selected,
+  onSelect,
+}: {
+  m: OpenRouterModel;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const hasPrice = m.promptCost != null || m.completionCost != null;
+  const ctxLabel =
+    m.context_length != null
+      ? m.maxCompletionTokens != null
+        ? `${formatCtx(m.context_length)}→${formatCtx(m.maxCompletionTokens)}`
+        : formatCtx(m.context_length)
+      : null;
+  const ctxTitle =
+    m.context_length != null && m.maxCompletionTokens != null
+      ? `context: ${formatCtx(m.context_length)} · max output: ${formatCtx(m.maxCompletionTokens)}`
+      : undefined;
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'w-full text-left px-3 py-2 hover:bg-panel transition-colors',
+        selected && 'bg-panel',
+      )}
+    >
+      <div className="flex items-baseline gap-3">
+        <div className="flex items-baseline gap-2 min-w-0 flex-1">
+          <span className="min-w-0 truncate text-xs text-fg">{m.name || m.id}</span>
+          {m.modality && (
+            <span className="shrink-0 text-[10px] text-muted">{m.modality.replace('->', '→')}</span>
+          )}
+        </div>
+        {hasPrice && (
+          <span
+            className="shrink-0 text-xs text-fg tabular-nums"
+            title={m.cacheReadCost != null ? `cache read: $${formatPrice(m.cacheReadCost)}/M` : undefined}
+          >
+            ${formatPrice(m.promptCost)}<span className="text-muted"> / </span>${formatPrice(m.completionCost)}
+          </span>
+        )}
+      </div>
+      <div className="mt-0.5 flex items-baseline gap-3">
+        <span className="min-w-0 flex-1 font-mono text-[10px] text-muted truncate">{m.id}</span>
+        {ctxLabel && (
+          <span className="shrink-0 text-[10px] text-muted tabular-nums" title={ctxTitle}>
+            {ctxLabel}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
 function ModelField({
   label,
   hint,
@@ -143,7 +200,9 @@ function ModelField({
   error: string | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [activeProvider, setActiveProvider] = useState<string | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -154,14 +213,48 @@ function ModelField({
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [open]);
 
+  const searchQuery = value.trim().toLowerCase();
+  const isSearching = useMemo(() => {
+    if (!searchQuery) return false;
+    return !models.some((m) => m.id.toLowerCase() === searchQuery);
+  }, [searchQuery, models]);
+
   const filtered = useMemo(() => {
-    const q = value.trim().toLowerCase();
-    const exactMatch = q.length > 0 && models.some((m) => m.id.toLowerCase() === q);
-    if (!q || exactMatch) return models.slice(0, 300);
+    if (!isSearching) return models;
     return models
-      .filter((m) => m.id.toLowerCase().includes(q) || m.name?.toLowerCase().includes(q))
+      .filter((m) => m.id.toLowerCase().includes(searchQuery) || m.name?.toLowerCase().includes(searchQuery))
       .slice(0, 300);
-  }, [value, models]);
+  }, [isSearching, searchQuery, models]);
+
+  const groupedAll = useMemo(() => {
+    const map = new Map<string, OpenRouterModel[]>();
+    for (const m of models) {
+      const provider = m.id.split('/')[0] || 'other';
+      const bucket = map.get(provider);
+      if (bucket) bucket.push(m);
+      else map.set(provider, [m]);
+    }
+    return Array.from(map.entries());
+  }, [models]);
+
+  useEffect(() => {
+    if (!open) return;
+    const currentProvider = value.includes('/') ? value.split('/')[0] : null;
+    if (currentProvider && models.some((m) => m.id.startsWith(`${currentProvider}/`))) {
+      setActiveProvider(currentProvider);
+    } else {
+      setActiveProvider(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (panelRef.current) panelRef.current.scrollTop = 0;
+  }, [activeProvider, isSearching]);
+
+  const activeItems = useMemo(() => {
+    if (activeProvider == null) return [] as OpenRouterModel[];
+    return models.filter((m) => m.id.startsWith(`${activeProvider}/`));
+  }, [activeProvider, models]);
 
   return (
     <div>
@@ -190,78 +283,56 @@ function ModelField({
           </button>
         </div>
         {open && (
-          <div className="absolute z-20 mt-1 w-full max-h-72 overflow-auto scroll-thin rounded-md border border-border bg-white shadow-lg">
+          <div ref={panelRef} className="absolute z-20 mt-1 w-full max-h-72 overflow-auto scroll-thin rounded-md border border-border bg-white shadow-lg">
             {loading && (
               <div className="px-3 py-6 text-center text-xs text-muted">Loading models…</div>
             )}
             {!loading && error && (
               <div className="px-3 py-6 text-center text-xs text-danger">加载失败：{error}</div>
             )}
-            {!loading && !error && filtered.length === 0 && (
+            {!loading && !error && isSearching && filtered.length === 0 && (
               <div className="px-3 py-6 text-center text-xs text-muted">无匹配模型</div>
             )}
-            {!loading && !error && filtered.map((m) => {
-              const hasPrice = m.promptCost != null || m.completionCost != null;
-              const ctxLabel =
-                m.context_length != null
-                  ? m.maxCompletionTokens != null
-                    ? `${formatCtx(m.context_length)}→${formatCtx(m.maxCompletionTokens)}`
-                    : formatCtx(m.context_length)
-                  : null;
-              const ctxTitle =
-                m.context_length != null && m.maxCompletionTokens != null
-                  ? `context: ${formatCtx(m.context_length)} · max output: ${formatCtx(m.maxCompletionTokens)}`
-                  : undefined;
+
+            {!loading && !error && isSearching && filtered.map((m) => (
+              <ModelRow key={m.id} m={m} selected={m.id === value} onSelect={() => { onChange(m.id); setOpen(false); }} />
+            ))}
+
+            {!loading && !error && !isSearching && activeProvider === null && groupedAll.map(([provider, items]) => {
+              const selected = value.startsWith(`${provider}/`);
               return (
                 <button
-                  key={m.id}
+                  key={provider}
                   type="button"
-                  onClick={() => { onChange(m.id); setOpen(false); }}
+                  onClick={() => setActiveProvider(provider)}
                   className={cn(
-                    'w-full text-left px-3 py-2 hover:bg-panel transition-colors',
-                    m.id === value && 'bg-panel',
+                    'w-full text-left px-3 py-2 hover:bg-panel transition-colors flex items-center gap-2',
+                    selected && 'bg-panel',
                   )}
                 >
-                  <div className="flex items-baseline gap-3">
-                    <div className="flex items-baseline gap-2 min-w-0 flex-1">
-                      <span className="min-w-0 truncate text-xs text-fg">
-                        {m.name || m.id}
-                      </span>
-                      {m.modality && (
-                        <span className="shrink-0 text-[10px] text-muted">
-                          {m.modality.replace('->', '→')}
-                        </span>
-                      )}
-                    </div>
-                    {hasPrice && (
-                      <span
-                        className="shrink-0 text-xs text-fg tabular-nums"
-                        title={
-                          m.cacheReadCost != null
-                            ? `cache read: $${formatPrice(m.cacheReadCost)}/M`
-                            : undefined
-                        }
-                      >
-                        ${formatPrice(m.promptCost)}<span className="text-muted"> / </span>${formatPrice(m.completionCost)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-0.5 flex items-baseline gap-3">
-                    <span className="min-w-0 flex-1 font-mono text-[10px] text-muted truncate">
-                      {m.id}
-                    </span>
-                    {ctxLabel && (
-                      <span
-                        className="shrink-0 text-[10px] text-muted tabular-nums"
-                        title={ctxTitle}
-                      >
-                        {ctxLabel}
-                      </span>
-                    )}
-                  </div>
+                  <span className="text-sm text-fg flex-1 min-w-0 truncate">{provider}</span>
+                  <span className="text-xs text-muted tabular-nums">{items.length}</span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted shrink-0" />
                 </button>
               );
             })}
+
+            {!loading && !error && !isSearching && activeProvider !== null && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setActiveProvider(null)}
+                  className="sticky top-0 z-10 w-full px-3 py-1.5 bg-panel/95 backdrop-blur-sm flex items-center gap-2 border-b border-border text-xs font-medium text-fg hover:bg-panel"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5 text-muted" />
+                  <span className="uppercase tracking-wide flex-1 text-left">{activeProvider}</span>
+                  <span className="text-muted tabular-nums">{activeItems.length}</span>
+                </button>
+                {activeItems.map((m) => (
+                  <ModelRow key={m.id} m={m} selected={m.id === value} onSelect={() => { onChange(m.id); setOpen(false); }} />
+                ))}
+              </>
+            )}
           </div>
         )}
       </div>
