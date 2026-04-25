@@ -55,7 +55,8 @@ export function App() {
   function handleRefresh() {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    setTimeout(() => qc.invalidateQueries(), 200);
+    setTimeout(() => qc.invalidateQueries(), 300);
+    setTimeout(() => setIsRefreshing(false), 500);
   }
 
   function onTabClick(next: Tab) {
@@ -131,13 +132,14 @@ export function App() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-10 border-b border-border bg-white/90 backdrop-blur">
-        {isRefreshing && (
-          <div
-            onAnimationEnd={() => setIsRefreshing(false)}
-            className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent origin-left will-change-transform animate-iris-progress shadow-[0_0_8px_1px_hsl(217_91%_55%/0.7)]"
-          />
+      <header
+        className={cn(
+          'sticky top-0 z-10 border-b bg-white/90 backdrop-blur transition-[border-color,box-shadow] duration-200',
+          isRefreshing
+            ? 'border-accent shadow-[0_2px_10px_-1px_hsl(217_91%_55%/0.5)]'
+            : 'border-border',
         )}
+      >
         <div className="max-w-7xl mx-auto px-5 h-14 flex items-center gap-6">
           <button
             type="button"
