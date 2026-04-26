@@ -334,7 +334,7 @@ function buildLogData(
   if (state.firstTokenAt != null && state.lastTokenAt != null && state.outputTokens > 0) {
     tpotMs = state.outputTokens >= 2
       ? (state.lastTokenAt - state.firstTokenAt) / (state.outputTokens - 1)
-      : 0;
+      : null;
   }
   return {
     requestId,
