@@ -227,6 +227,19 @@ export interface OpenRouterProvider {
   name: string;
 }
 
+export type UpstreamId = 'primary' | 'alt';
+
+export interface UpstreamItem {
+  id: UpstreamId;
+  name: string;
+  baseUrl: string;
+}
+
+export interface UpstreamsResponse {
+  items: UpstreamItem[];
+  active: UpstreamId;
+}
+
 export const api = {
   summary: (range: Range) =>
     get<Summary>(`/api/stats/summary${qs({ range })}`),
@@ -252,5 +265,7 @@ export const api = {
       post<ProviderRouting>('/api/settings/provider-routing', r),
     listOpenRouterProviders: () =>
       get<{ items: OpenRouterProvider[]; cached: boolean }>('/api/settings/openrouter-providers'),
+    getUpstreams: () => get<UpstreamsResponse>('/api/settings/upstreams'),
+    switchUpstream: (id: UpstreamId) => post<UpstreamsResponse>('/api/settings/upstreams', { id }),
   },
 };

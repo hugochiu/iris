@@ -58,3 +58,14 @@ export function setProviderRouting(routing: ProviderRouting): ProviderRouting {
   upsertStmt.run(PROVIDER_ROUTING_KEY, JSON.stringify(routing), now);
   return getProviderRouting();
 }
+
+const ACTIVE_UPSTREAM_KEY = 'active_upstream';
+
+export function getActiveUpstreamId(): string | null {
+  const row = selectStmt.get(ACTIVE_UPSTREAM_KEY) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+export function setActiveUpstreamId(id: string): void {
+  upsertStmt.run(ACTIVE_UPSTREAM_KEY, id, new Date().toISOString());
+}

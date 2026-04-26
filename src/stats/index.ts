@@ -11,6 +11,8 @@ import {
   getProviderRoutingHandler,
   updateProviderRoutingHandler,
   listOpenRouterProvidersHandler,
+  getUpstreamsHandler,
+  switchUpstreamHandler,
 } from './settings.js';
 
 export const statsRoutes = new Hono();
@@ -28,3 +30,5 @@ statsRoutes.get('/settings/openrouter-models', listOpenRouterModelsHandler);
 statsRoutes.get('/settings/provider-routing', getProviderRoutingHandler);
 statsRoutes.post('/settings/provider-routing', updateProviderRoutingHandler);
 statsRoutes.get('/settings/openrouter-providers', listOpenRouterProvidersHandler);
+statsRoutes.get('/settings/upstreams', getUpstreamsHandler);
+statsRoutes.post('/settings/upstreams', switchUpstreamHandler);

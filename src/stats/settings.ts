@@ -1,5 +1,4 @@
 import type { Context } from 'hono';
-import { config } from '../config.js';
 import {
   getModelMapping,
   setModelMapping,
@@ -9,6 +8,7 @@ import {
   type ProviderRouting,
   type Tier,
 } from '../db/settings.js';
+import { getActiveUpstream } from '../upstream.js';
 
 const TIERS: Tier[] = ['opus', 'sonnet', 'haiku'];
 const MAX_LEN = 200;
@@ -72,11 +72,12 @@ export async function listOpenRouterModelsHandler(c: Context) {
     return c.json({ items: modelsCache.items, cached: true });
   }
 
-  const url = `${config.openRouterBaseUrl}/models`;
+  const upstream = getActiveUpstream();
+  const url = `${upstream.baseUrl}/models`;
   let res: Response;
   try {
     res = await fetch(url, {
-      headers: { Authorization: `Bearer ${config.openRouterApiKey}` },
+      headers: { Authorization: `Bearer ${upstream.apiKey}` },
     });
   } catch (err: any) {
     return c.json({ error: `Failed to reach OpenRouter: ${err?.message ?? err}` }, 502);
@@ -168,11 +169,12 @@ export async function listOpenRouterProvidersHandler(c: Context) {
     return c.json({ items: providersCache.items, cached: true });
   }
 
-  const url = `${config.openRouterBaseUrl}/providers`;
+  const upstream = getActiveUpstream();
+  const url = `${upstream.baseUrl}/providers`;
   let res: Response;
   try {
     res = await fetch(url, {
-      headers: { Authorization: `Bearer ${config.openRouterApiKey}` },
+      headers: { Authorization: `Bearer ${upstream.apiKey}` },
     });
   } catch (err: any) {
     return c.json({ error: `Failed to reach OpenRouter: ${err?.message ?? err}` }, 502);
@@ -192,4 +194,35 @@ export async function listOpenRouterProvidersHandler(c: Context) {
 
   providersCache = { at: now, items };
   return c.json({ items, cached: false });
+}
+
+// ─── Upstream switching ───
+
+import { listUpstreams, setActiveUpstream } from '../upstream.js';
+import type { UpstreamId } from '../config.js';
+
+export async function getUpstreamsHandler(c: Context) {
+  return c.json(listUpstreams());
+}
+
+export async function switchUpstreamHandler(c: Context) {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+  if (!body || typeof body !== 'object') {
+    return c.json({ error: 'Body must be an object' }, 400);
+  }
+  const id = (body as Record<string, unknown>).id;
+  if (typeof id !== 'string') {
+    return c.json({ error: 'id must be a string' }, 400);
+  }
+  try {
+    setActiveUpstream(id as UpstreamId);
+  } catch (err: any) {
+    return c.json({ error: err.message }, 400);
+  }
+  return c.json(listUpstreams());
 }

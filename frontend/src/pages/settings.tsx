@@ -7,6 +7,7 @@ import {
   type OpenRouterModel,
   type OpenRouterProvider,
   type ProviderRouting,
+  type UpstreamId,
 } from '@/lib/api';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -76,6 +77,8 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-4 max-w-3xl">
+      <UpstreamSwitchCard />
+
       <Card>
         <CardHeader>
           <CardTitle>OpenRouter Model Mapping</CardTitle>
@@ -122,6 +125,68 @@ export function SettingsPage() {
 
       <ProviderRoutingCard />
     </div>
+  );
+}
+
+function UpstreamSwitchCard() {
+  const qc = useQueryClient();
+  const upstreamQ = useQuery({
+    queryKey: ['settings', 'upstreams'],
+    queryFn: () => api.settings.getUpstreams(),
+  });
+
+  const mutation = useMutation({
+    mutationFn: (id: UpstreamId) => api.settings.switchUpstream(id),
+    onSuccess: (data) => {
+      qc.setQueryData(['settings', 'upstreams'], data);
+    },
+  });
+
+  const data = upstreamQ.data;
+  if (!data || data.items.length < 2) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Upstream</CardTitle>
+        <p className="text-xs text-muted mt-1">
+          选择当前使用的上游服务。所有请求将路由到选中的 upstream。
+        </p>
+      </CardHeader>
+      <CardBody>
+        <div className="flex gap-2">
+          {data.items.map((u) => {
+            const active = u.id === data.active;
+            return (
+              <button
+                key={u.id}
+                type="button"
+                onClick={() => { if (!active) mutation.mutate(u.id); }}
+                disabled={mutation.isPending}
+                className={cn(
+                  'flex-1 rounded-md border px-3 py-2.5 text-left transition-colors',
+                  active
+                    ? 'border-accent bg-accent/5 ring-1 ring-accent/30'
+                    : 'border-border bg-white hover:bg-panel',
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    'h-2 w-2 rounded-full shrink-0',
+                    active ? 'bg-accent' : 'bg-border',
+                  )} />
+                  <span className="text-sm font-medium text-fg">{u.name}</span>
+                </div>
+                <p className="mt-1 text-xs text-muted font-mono truncate">{u.baseUrl}</p>
+              </button>
+            );
+          })}
+        </div>
+        {mutation.isError && (
+          <p className="mt-2 text-xs text-danger">切换失败：{String(mutation.error)}</p>
+        )}
+      </CardBody>
+    </Card>
   );
 }
 

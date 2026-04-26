@@ -248,13 +248,19 @@ export function SessionDetailPage({
                           <div className="text-muted text-[11px]">→ {row.realModel}</div>
                         )}
                       </Td>
-                      <Td>
+                      <Td className="max-w-[320px]">
                         {row.hasToolUse && (
                           row.toolCalls && row.toolCalls.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
                               {row.toolCalls.map((t, i) => (
-                                <Badge key={i} tone="accent" title={t.label ? `${t.name}: ${t.label}` : t.name}>
-                                  {t.name}{t.label && <span className="font-normal opacity-75">: {t.label}</span>}
+                                <Badge
+                                  key={i}
+                                  tone="accent"
+                                  title={t.label ? `${t.name}: ${t.label}` : t.name}
+                                  className="max-w-[260px] !flex-col !items-start whitespace-normal break-all"
+                                >
+                                  <span>{t.name}</span>
+                                  {t.label && <span className="font-normal opacity-75">{t.label}</span>}
                                 </Badge>
                               ))}
                             </div>

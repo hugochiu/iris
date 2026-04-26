@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
 import { stream } from 'hono/streaming';
-import { config } from '../config.js';
 import { getModelMapping, getProviderRouting, type Tier } from '../db/settings.js';
+import { getActiveUpstream } from '../upstream.js';
 import {
   extractLatestUserPreviewFromMessages,
   extractToolCallsFromContent,
@@ -411,11 +411,12 @@ export async function proxyHandler(c: Context) {
   // Always request streaming upstream so we can tee for logging; we re-assemble
   // a single JSON response for clients that didn't ask for stream.
   const requestBody = { ...bodyWithoutMetadata, ...providerField, model: resolvedModel, stream: true };
-  const upstreamUrl = `${config.openRouterBaseUrl}/messages`;
+  const upstream = getActiveUpstream();
+  const upstreamUrl = `${upstream.baseUrl}/messages`;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${config.openRouterApiKey}`,
+    Authorization: `Bearer ${upstream.apiKey}`,
     'User-Agent': 'Go-http-client/2.0',
     'HTTP-Referer': '',
     'X-OpenRouter-Title': '',
