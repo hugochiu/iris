@@ -25,10 +25,18 @@ If you run a lot of Claude Code agent loops and care about where the money goes,
 ## Features
 
 - **Messages API proxy** — Anthropic-compatible `POST /v1/messages`, both streaming and non-streaming
-- **Automatic model mapping** — unprefixed model names (e.g. `claude-opus-4-7`) are auto-prefixed to `anthropic/claude-opus-4-7`
+- **Model routing** — requests matching `opus` / `sonnet` / `haiku` can be remapped from the dashboard to any OpenRouter model (e.g. send Claude Code's Opus traffic to DeepSeek, GLM-4.6, or anything else on OpenRouter) — no client-side config changes
+- **Multi-upstream switching** — configure a second upstream via `OPENROUTER_ALT_*` (official key / relay key / self-hosted gateway) and swap between them from the dashboard without touching env vars
+- **Provider allowlist** — pin OpenRouter to specific providers (e.g. DeepInfra only, skip Novita) to dodge quality issues with specific providers
 - **Full logging** — request headers / body, response headers / body, token usage, and cost all land in SQLite
-- **Dashboard** — Overview (summary) / Logs (details) / Models (per-model aggregation), with 24h / 7d / 30d / all time ranges
-- **Log detail panel** — full payload view for each call; user message text blocks are expanded by default
+- **Dashboard** — 6 tabs:
+  - **Overview** — total spend, request count, token usage, time-bucketed trends
+  - **Sessions** — aggregated per Claude Code session; see exactly how much each agent loop cost
+  - **Logs** — detail list + per-request payload panel
+  - **Models** — per-model aggregation of cost / tokens / call count
+  - **Cache** — cache hit ratio, cache-read / cache-write cost breakdown
+  - **Settings** — model routing, provider allowlist, upstream switching
+- **Time ranges** — today / 24h / 7d / 30d / all (global filter)
 
 ## Stack
 
@@ -63,12 +71,18 @@ For production, run `pnpm serve` — the frontend is built and served by the bac
 
 | Variable | Default | Description |
 |---|---|---|
-| `OPENROUTER_API_KEY` | **required** | OpenRouter API key. **Read from system environment variable** — do not put it in `.env` (avoids accidental leaks) |
+| `OPENROUTER_API_KEY` | **required** | Primary upstream API key. **Read from the system environment** — do not put it in `.env` (avoids accidental leaks) |
 | `PORT` | `3000` | Proxy listen port |
-| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | Upstream OpenRouter URL |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | Primary upstream URL |
+| `OPENROUTER_NAME` | `Primary` | Display name for the primary upstream in the dashboard |
+| `OPENROUTER_ALT_API_KEY` | — | Alt upstream key (optional; only active when `ALT_BASE_URL` is also set) |
+| `OPENROUTER_ALT_BASE_URL` | — | Alt upstream URL (optional; e.g. a relay or self-hosted gateway) |
+| `OPENROUTER_ALT_NAME` | `Alt` | Display name for the alt upstream |
 | `DEFAULT_MODEL` | `anthropic/claude-opus-4.6` | Default model when the client does not specify one |
 | `DB_PATH` | `./data/iris.db` | SQLite database path |
 | `LOG_PAYLOADS` | `true` | Whether to record full request / response payloads (disable if they're too large) |
+
+> Only the OpenRouter official upstream returns a `usage.cost` field. If the alt upstream is some other OpenAI-compatible gateway, the dashboard can still count tokens but `cost` will be empty.
 
 ## Usage
 
@@ -94,6 +108,12 @@ curl http://localhost:3000/v1/messages \
   }'
 ```
 
+### Model routing
+
+If the request's `model` field contains `opus`, `sonnet`, or `haiku`, it gets rewritten to whatever you've configured on the Settings page. For example, with `opus → deepseek/deepseek-v3.2-exp`, every `claude-opus-*` request runs on DeepSeek instead.
+
+Without a mapping, the default behavior applies: model names containing `/` (e.g. `openai/gpt-4o`) pass through as-is, and bare names get an automatic `anthropic/` prefix.
+
 ## Development
 
 | Command | What it does |
@@ -102,38 +122,81 @@ curl http://localhost:3000/v1/messages \
 | `pnpm dev` | Dev mode: backend (:3000, `tsx watch` hot reload) + frontend (:5173, vite HMR) |
 | `pnpm dev:back` | Backend only |
 | `pnpm serve` | Production: frontend built and served by backend from `/` (single port :3000) |
-| `pnpm db:push` | Apply Drizzle schema changes |
 
 In dev mode the frontend proxies `/api/*` to :3000 via Vite, so you only need to visit :5173.
+
+### Schema migrations
+
+Schema changes are reconciled at startup by idempotent logic: `request_logs` is handled by `migrateRequestLogs()` in [src/index.ts](src/index.ts) (create-new-table → copy-data → drop-old), and other tables / indexes are guaranteed by `CREATE TABLE IF NOT EXISTS` / `ensureColumn` in [src/db/index.ts](src/db/index.ts).
+
+**Do not use `drizzle-kit push`** — see [CLAUDE.md](CLAUDE.md) for the reasoning.
+
+### After pulling code
+
+After `git pull`, if `package.json` changed, the easiest path is to re-run `pnpm bootstrap` — every step is idempotent (already-installed deps are skipped, existing `.env` is not overwritten). Schema needs no manual action; it self-aligns at startup.
+
+If you only want to update deps:
+
+```bash
+pnpm install && (cd frontend && pnpm install)
+```
+
+Note: `pnpm dev` itself does **not** install or check deps — if deps change and you skip the install, you'll hit `Cannot find module`.
 
 ## Project structure
 
 ```
 src/
-  index.ts              # Hono entry, route registration + frontend static serving
-  config.ts             # Environment variable parsing
-  proxy/handler.ts      # /v1/messages proxy, streaming response parser, log capture
-  stats/                # Dashboard stats API (summary / timeseries / by-model / logs)
-  db/                   # Drizzle schema + logger
+  index.ts                   # Hono entry, route registration + static serving + startup migration
+  config.ts                  # Env var parsing, primary/alt upstream assembly
+  upstream.ts                # Active-upstream read/write (active state lives in DB)
+  proxy/handler.ts           # /v1/messages proxy, streaming parser, model routing, log capture
+  stats/                     # Dashboard stats API
+    summary.ts               #   Totals (cost, tokens, request count)
+    timeseries.ts            #   Time-bucketed trends
+    by-model.ts              #   Per-model aggregation
+    logs.ts                  #   Request list + single-log detail
+    sessions.ts              #   Per-session aggregation + detail
+    session-meta.ts          #   Extract preview / tool calls from messages
+    errors.ts, range.ts      #   Error classification, time-range parsing
+    settings.ts              #   Read/write API for model mapping / provider routing / upstream
+  db/
+    index.ts                 #   better-sqlite3 + startup invariants (CREATE TABLE / ensureColumn)
+    schema.ts                #   Drizzle schema (for ORM type inference)
+    logger.ts                #   Writes to request_logs / request_payloads
+    settings.ts              #   KV-style settings table (model map, provider routing, active upstream)
+    backfill-session-meta.ts #   Background backfill for session_name / preview / tool_calls on old rows
 frontend/
   src/
-    App.tsx             # Main layout + tab switching
-    pages/              # Overview / Logs / ByModel
-    components/         # metric-card, json-tree, log-detail, etc.
-    hooks/use-stats.ts  # React Query wrappers
-    lib/api.ts          # Frontend API client
+    App.tsx                  # Main layout + tab switching + URL state
+    pages/
+      overview.tsx           #   Totals + trend chart
+      sessions.tsx           #   Session list
+      session-detail.tsx     #   Request sequence for a single session
+      logs.tsx               #   Request details
+      by-model.tsx           #   Per-model aggregation
+      cache.tsx              #   Cache hit ratio / cache cost
+      settings.tsx           #   Model map / provider / upstream switch
+    components/              # metric-card, json-tree, log-detail, range-picker, etc.
+    lib/api.ts               # Frontend API client
 scripts/
-  setup.sh              # First-time install
-  dev.sh                # Parallel dev-mode launcher
-  build.sh              # Production build + launch
-data/                   # SQLite database (gitignored)
+  setup.sh                   # First-time install
+  dev.sh                     # Parallel dev-mode launcher
+  build.sh                   # Production build + launch
+  backfill-session-meta.sh   # Manually trigger session metadata backfill
+  rebuild-tool-call-labels.sh # Rebuild tool-call labels on historical logs
+data/                        # SQLite database (gitignored)
 ```
 
 ## FAQ
 
-**Can I use this with DeepSeek / Groq / ollama or other OpenAI-compatible upstreams?**
+**Can I plug in another OpenAI / Anthropic-compatible upstream (relay, self-hosted gateway, direct-to-official)?**
 
-The proxy layer can, but the dashboard's cost field will be empty — it depends on OpenRouter's proprietary `usage.cost` in the response. Other upstreams only return token counts, so you'll see token usage but not actual spend. That's why Iris currently targets OpenRouter specifically.
+Yes — put the URL and key in `OPENROUTER_ALT_*` and you can switch upstreams from the Settings page. But the dashboard's cost field depends on OpenRouter's proprietary `usage.cost` — on any other upstream, tokens and latency still work, but spend will be empty.
+
+**Can I make Claude Code's Opus requests run on DeepSeek / GLM / some cheaper model?**
+
+Yes. On the Settings page, change the `opus` target to the OpenRouter model id you want (e.g. `deepseek/deepseek-v3.2-exp`) — no changes needed on the Claude Code side. `sonnet` / `haiku` work the same way.
 
 **Will the database get huge?**
 
