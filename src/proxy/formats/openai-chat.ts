@@ -63,11 +63,11 @@ function extractPreview(messages: unknown[]): string | null {
 //
 // OpenAI Chat Completions clients don't know to send cache_control breakpoints,
 // but Anthropic models served via this format still require them — without
-// explicit markers, OpenRouter won't cache anything. We inject up to 3
-// ephemeral breakpoints on what is stable across turns: the system prompt,
-// the tool definitions, and the last turn of prior conversation (everything
-// except the newest user message). Anthropic allows up to 4 breakpoints; short
-// content that falls below its cache threshold silently no-ops.
+// explicit markers, OpenRouter won't cache anything. We inject up to 4
+// ephemeral breakpoints (Anthropic's max): tools, system, the second-to-last
+// message (end of prior stable history), and the last message (the current
+// new turn, so next request can hit cache all the way through it). Short
+// content that falls below Anthropic's cache threshold silently no-ops.
 
 function isAnthropicModel(model: string): boolean {
   return model.startsWith('anthropic/');
@@ -117,7 +117,7 @@ function injectCacheControl(body: Record<string, any>): void {
     }
   }
 
-  // 3. Second-to-last message (the last stable prior turn before the new user message)
+  // 3. Second-to-last message (end of prior stable history)
   const secondLastIdx = messages.length - 2;
   if (secondLastIdx > sysIdx) {
     const m = messages[secondLastIdx];
@@ -128,6 +128,21 @@ function injectCacheControl(body: Record<string, any>): void {
         cache_control: { type: 'ephemeral' },
       };
       messages[secondLastIdx] = { ...m, content: blocks };
+    }
+  }
+
+  // 4. Last message (the current new turn). Doesn't change this request's
+  // cache_write, but lets the next request's cache_read extend through here.
+  const lastIdx = messages.length - 1;
+  if (lastIdx > secondLastIdx && lastIdx > sysIdx) {
+    const m = messages[lastIdx];
+    const blocks = toContentBlocks(m?.content);
+    if (blocks && blocks.length > 0) {
+      blocks[blocks.length - 1] = {
+        ...blocks[blocks.length - 1],
+        cache_control: { type: 'ephemeral' },
+      };
+      messages[lastIdx] = { ...m, content: blocks };
     }
   }
 }
