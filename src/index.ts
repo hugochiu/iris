@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { config } from './config.js';
 import { proxyHandler, setLogCallback, setPayloadCallback } from './proxy/handler.js';
+import { runProxy } from './proxy/pipeline.js';
+import { openaiChatAdapter } from './proxy/formats/openai-chat.js';
+import { openaiResponsesAdapter } from './proxy/formats/openai-responses.js';
 import { db, sqlite } from './db/index.js';
 import { logRequest, logPayload } from './db/logger.js';
 import { scheduleBackfillSessionMeta } from './db/backfill-session-meta.js';
@@ -35,7 +38,9 @@ const TARGET_CREATE_SQL = `CREATE TABLE request_logs (
   session_name TEXT,
   preview TEXT,
   tool_calls TEXT,
-  preview_msg_index INTEGER
+  preview_msg_index INTEGER,
+  api_format TEXT NOT NULL DEFAULT 'anthropic',
+  reasoning_tokens INTEGER NOT NULL DEFAULT 0
 )`;
 
 const TARGET_COLUMNS = [
@@ -45,6 +50,7 @@ const TARGET_COLUMNS = [
   'duration_ms', 'ttft_ms', 'tpot_ms',
   'status', 'error_message', 'has_tool_use', 'stop_reason', 'session_name',
   'preview', 'tool_calls', 'preview_msg_index',
+  'api_format', 'reasoning_tokens',
 ];
 
 function migrateRequestLogs() {
@@ -117,6 +123,8 @@ const app = new Hono();
 
 app.get('/health', (c) => c.json({ status: 'ok' }));
 app.post('/v1/messages', proxyHandler);
+app.post('/v1/chat/completions', (c) => runProxy(c, openaiChatAdapter));
+app.post('/v1/responses', (c) => runProxy(c, openaiResponsesAdapter));
 app.route('/api', statsRoutes);
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');

@@ -99,6 +99,7 @@ export function LogsPage({ range }: { range: Range }) {
             <thead>
               <tr className="text-left text-muted border-b border-border">
                 <Th>Time</Th>
+                <Th>API</Th>
                 <Th>Model</Th>
                 <Th className="text-right">In</Th>
                 <Th className="text-right">Out</Th>
@@ -112,7 +113,7 @@ export function LogsPage({ range }: { range: Range }) {
             </thead>
             <tbody>
               {items.length === 0 && !logs.isLoading && (
-                <tr><td colSpan={10} className="py-8 text-center text-muted">No logs match current filters.</td></tr>
+                <tr><td colSpan={11} className="py-8 text-center text-muted">No logs match current filters.</td></tr>
               )}
               {items.map(row => (
                 <tr
@@ -121,6 +122,7 @@ export function LogsPage({ range }: { range: Range }) {
                   className="border-b border-border hover:bg-panel cursor-pointer"
                 >
                   <Td className="tabular-nums font-mono text-muted">{formatTimestamp(row.timestamp)}</Td>
+                  <Td><ApiFormatBadge format={row.apiFormat} /></Td>
                   <Td>
                     <div className="font-mono">{row.model}</div>
                     {row.realModel && row.realModel !== row.model && (
@@ -174,4 +176,18 @@ function Th({ className, children }: { className?: string; children: React.React
 
 function Td({ className, children }: { className?: string; children: React.ReactNode }) {
   return <td className={cn('px-3 py-2 align-top', className)}>{children}</td>;
+}
+
+const API_FORMAT_META: Record<
+  'anthropic' | 'openai-chat' | 'openai-responses',
+  { label: string; tone: 'accent' | 'success' | 'warning'; title: string }
+> = {
+  anthropic: { label: 'messages', tone: 'accent', title: 'POST /v1/messages (Anthropic)' },
+  'openai-chat': { label: 'chat', tone: 'success', title: 'POST /v1/chat/completions (OpenAI)' },
+  'openai-responses': { label: 'responses', tone: 'warning', title: 'POST /v1/responses (OpenAI)' },
+};
+
+function ApiFormatBadge({ format }: { format: 'anthropic' | 'openai-chat' | 'openai-responses' }) {
+  const meta = API_FORMAT_META[format] ?? { label: format, tone: 'accent' as const, title: format };
+  return <Badge tone={meta.tone} title={meta.title}>{meta.label}</Badge>;
 }

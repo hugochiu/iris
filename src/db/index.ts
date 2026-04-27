@@ -24,6 +24,8 @@ ensureColumn('request_logs', 'session_name', 'TEXT');
 ensureColumn('request_logs', 'preview', 'TEXT');
 ensureColumn('request_logs', 'tool_calls', 'TEXT');
 ensureColumn('request_logs', 'preview_msg_index', 'INTEGER');
+ensureColumn('request_logs', 'api_format', "TEXT NOT NULL DEFAULT 'anthropic'");
+ensureColumn('request_logs', 'reasoning_tokens', 'INTEGER NOT NULL DEFAULT 0');
 sqlite.exec(
   `CREATE INDEX IF NOT EXISTS request_logs_session_ts_idx ON request_logs(session_id, timestamp);`,
 );

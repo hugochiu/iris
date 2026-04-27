@@ -27,6 +27,8 @@ export const requestLogs = sqliteTable(
     preview: text('preview'),
     toolCalls: text('tool_calls'),
     previewMsgIndex: integer('preview_msg_index'),
+    apiFormat: text('api_format').notNull().default('anthropic'),
+    reasoningTokens: integer('reasoning_tokens').notNull().default(0),
   },
 );
 

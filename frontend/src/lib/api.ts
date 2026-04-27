@@ -90,6 +90,8 @@ export interface LogRow {
   errorMessage: string | null;
   hasToolUse: boolean;
   stopReason: string | null;
+  apiFormat: 'anthropic' | 'openai-chat' | 'openai-responses';
+  reasoningTokens: number;
 }
 
 export interface LogsPage {

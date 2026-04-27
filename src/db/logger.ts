@@ -19,6 +19,7 @@ export function logRequest(data: RequestLogData): void {
         cost: data.cost,
         cacheReadInputTokens: data.cacheReadInputTokens,
         cacheCreationInputTokens: data.cacheCreationInputTokens,
+        reasoningTokens: data.reasoningTokens,
         durationMs: data.durationMs,
         ttftMs: data.ttftMs,
         tpotMs: data.tpotMs,
@@ -29,6 +30,7 @@ export function logRequest(data: RequestLogData): void {
         preview: data.preview,
         toolCalls: data.toolCalls,
         previewMsgIndex: data.previewMsgIndex,
+        apiFormat: data.apiFormat,
       })
       .run();
   } catch (err: any) {
