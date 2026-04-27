@@ -9,6 +9,7 @@ import { proxyHandler, setLogCallback, setPayloadCallback } from './proxy/handle
 import { runProxy } from './proxy/pipeline.js';
 import { openaiChatAdapter } from './proxy/formats/openai-chat.js';
 import { openaiResponsesAdapter } from './proxy/formats/openai-responses.js';
+import { listModelsHandler, getModelHandler } from './proxy/models.js';
 import { db, sqlite } from './db/index.js';
 import { logRequest, logPayload } from './db/logger.js';
 import { scheduleBackfillSessionMeta } from './db/backfill-session-meta.js';
@@ -125,6 +126,8 @@ app.get('/health', (c) => c.json({ status: 'ok' }));
 app.post('/v1/messages', proxyHandler);
 app.post('/v1/chat/completions', (c) => runProxy(c, openaiChatAdapter));
 app.post('/v1/responses', (c) => runProxy(c, openaiResponsesAdapter));
+app.get('/v1/models', listModelsHandler);
+app.get('/v1/models/*', getModelHandler);
 app.route('/api', statsRoutes);
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');

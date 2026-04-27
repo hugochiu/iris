@@ -85,6 +85,32 @@ function toContentBlocks(content: unknown): any[] | null {
   return null;
 }
 
+function markMessageCacheControl(messages: any[], idx: number): void {
+  const m = messages[idx];
+  const blocks = toContentBlocks(m?.content);
+  if (!blocks || blocks.length === 0) return;
+  blocks[blocks.length - 1] = {
+    ...blocks[blocks.length - 1],
+    cache_control: { type: 'ephemeral' },
+  };
+  messages[idx] = { ...m, content: blocks };
+}
+
+// Walk backward from startIdx (inclusive) down to floorIdx (exclusive),
+// returning the first index with markable content. `assistant` messages with
+// only tool_calls have content=null — they can't carry cache_control in this
+// format, so we skip past them instead of wasting a breakpoint slot.
+function findMarkableMessage(
+  messages: any[],
+  startIdx: number,
+  floorIdx: number,
+): number {
+  for (let i = startIdx; i > floorIdx; i--) {
+    if (toContentBlocks(messages[i]?.content)) return i;
+  }
+  return -1;
+}
+
 function injectCacheControl(body: Record<string, any>): void {
   if (typeof body.model !== 'string' || !isAnthropicModel(body.model)) return;
 
@@ -117,32 +143,17 @@ function injectCacheControl(body: Record<string, any>): void {
     }
   }
 
-  // 3. Second-to-last message (end of prior stable history)
-  const secondLastIdx = messages.length - 2;
-  if (secondLastIdx > sysIdx) {
-    const m = messages[secondLastIdx];
-    const blocks = toContentBlocks(m?.content);
-    if (blocks && blocks.length > 0) {
-      blocks[blocks.length - 1] = {
-        ...blocks[blocks.length - 1],
-        cache_control: { type: 'ephemeral' },
-      };
-      messages[secondLastIdx] = { ...m, content: blocks };
-    }
-  }
-
-  // 4. Last message (the current new turn). Doesn't change this request's
-  // cache_write, but lets the next request's cache_read extend through here.
-  const lastIdx = messages.length - 1;
-  if (lastIdx > secondLastIdx && lastIdx > sysIdx) {
-    const m = messages[lastIdx];
-    const blocks = toContentBlocks(m?.content);
-    if (blocks && blocks.length > 0) {
-      blocks[blocks.length - 1] = {
-        ...blocks[blocks.length - 1],
-        cache_control: { type: 'ephemeral' },
-      };
-      messages[lastIdx] = { ...m, content: blocks };
+  // 3 & 4. Two breakpoints on messages: the last markable message (end of
+  // current turn — lets the next request's cache_read extend through here)
+  // and the markable message before it (end of prior stable history). We
+  // walk backward to skip assistant tool_call messages (content=null) rather
+  // than burning a breakpoint slot on something that can't carry cache_control.
+  const lastIdx = findMarkableMessage(messages, messages.length - 1, sysIdx);
+  if (lastIdx >= 0) {
+    markMessageCacheControl(messages, lastIdx);
+    const secondLastIdx = findMarkableMessage(messages, lastIdx - 1, sysIdx);
+    if (secondLastIdx >= 0) {
+      markMessageCacheControl(messages, secondLastIdx);
     }
   }
 }

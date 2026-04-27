@@ -9,6 +9,7 @@ import {
   type Tier,
 } from '../db/settings.js';
 import { getActiveUpstream } from '../upstream.js';
+import { fetchUpstreamModelsRaw } from '../upstream-models.js';
 
 const TIERS: Tier[] = ['opus', 'sonnet', 'haiku'];
 const MAX_LEN = 200;
@@ -56,8 +57,6 @@ type OpenRouterModel = {
   cacheReadCost?: number;
   cacheWriteCost?: number;
 };
-let modelsCache: { at: number; items: OpenRouterModel[] } | null = null;
-const MODELS_TTL_MS = 10 * 60 * 1000;
 
 function pricePerMillion(v: unknown): number | undefined {
   if (typeof v !== 'string') return undefined;
@@ -67,27 +66,11 @@ function pricePerMillion(v: unknown): number | undefined {
 }
 
 export async function listOpenRouterModelsHandler(c: Context) {
-  const now = Date.now();
-  if (modelsCache && now - modelsCache.at < MODELS_TTL_MS) {
-    return c.json({ items: modelsCache.items, cached: true });
+  const result = await fetchUpstreamModelsRaw();
+  if (!result.ok) {
+    return c.json({ error: result.error, detail: result.detail }, result.status as any);
   }
-
-  const upstream = getActiveUpstream();
-  const url = `${upstream.baseUrl}/models`;
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      headers: { Authorization: `Bearer ${upstream.apiKey}` },
-    });
-  } catch (err: any) {
-    return c.json({ error: `Failed to reach OpenRouter: ${err?.message ?? err}` }, 502);
-  }
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    return c.json({ error: `OpenRouter returned ${res.status}`, detail: text.slice(0, 500) }, 502);
-  }
-  const json = (await res.json()) as { data?: Array<Record<string, unknown>> };
-  const items: OpenRouterModel[] = (json.data ?? []).map((m) => {
+  const items: OpenRouterModel[] = result.items.map((m) => {
     const pricing = (m.pricing as Record<string, unknown> | undefined) ?? {};
     const arch = (m.architecture as Record<string, unknown> | undefined) ?? {};
     const top = (m.top_provider as Record<string, unknown> | undefined) ?? {};
@@ -104,8 +87,7 @@ export async function listOpenRouterModelsHandler(c: Context) {
     };
   }).filter((m) => m.id);
 
-  modelsCache = { at: now, items };
-  return c.json({ items, cached: false });
+  return c.json({ items, cached: result.cached });
 }
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
