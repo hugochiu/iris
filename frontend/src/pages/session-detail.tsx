@@ -110,7 +110,12 @@ export function SessionDetailPage({
         <MetricCard
           label="Span"
           value={formatLongDuration(durationMs)}
-          sub={formatTimestamp(summary.firstTimestamp)}
+          sub={
+            <>
+              <div>{formatTimestamp(summary.firstTimestamp)}</div>
+              <div className="text-[10px] uppercase tracking-wider opacity-70">all-time</div>
+            </>
+          }
         />
         <MetricCard
           label="Active"

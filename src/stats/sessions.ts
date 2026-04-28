@@ -21,8 +21,15 @@ const sessionAggregateColumns = {
   totalTokens: sql<number>`coalesce(sum(${requestLogs.totalTokens}), 0)`,
   inputTokens: sql<number>`coalesce(sum(${requestLogs.inputTokens}), 0)`,
   outputTokens: sql<number>`coalesce(sum(${requestLogs.outputTokens}), 0)`,
-  firstTimestamp: sql<string>`min(${requestLogs.timestamp})`,
-  lastTimestamp: sql<string>`max(${requestLogs.timestamp})`,
+  firstTimestamp: sql<string>`(
+    select min(timestamp) from request_logs r2
+    where r2.session_id = request_logs.session_id
+  )`,
+  lastTimestamp: sql<string>`(
+    select max(timestamp) from request_logs r2
+    where r2.session_id = request_logs.session_id
+  )`,
+  rangeLastTimestamp: sql<string>`max(${requestLogs.timestamp})`,
   modelCount: sql<number>`count(distinct coalesce(${requestLogs.realModel}, ${requestLogs.model}))`,
   models: sql<string | null>`group_concat(distinct coalesce(${requestLogs.realModel}, ${requestLogs.model}))`,
   errorCount: sql<number>`sum(case when ${requestLogs.status} = 'error' then 1 else 0 end)`,
@@ -39,6 +46,7 @@ type RawSessionRow = {
   outputTokens: number;
   firstTimestamp: string;
   lastTimestamp: string;
+  rangeLastTimestamp: string;
   modelCount: number;
   models: string | null;
   errorCount: number;
@@ -86,7 +94,7 @@ export async function sessionsListHandler(c: Context) {
     .all() as RawSessionRow[];
 
   const items = rows.map(shapeSession);
-  const nextCursor = rows.length === limit ? rows[rows.length - 1].lastTimestamp : null;
+  const nextCursor = rows.length === limit ? rows[rows.length - 1].rangeLastTimestamp : null;
 
   return c.json({ items, nextCursor });
 }

@@ -58,9 +58,15 @@ function computeRequestAutoExpandPaths(data: unknown): Set<string> {
     if (!msg || typeof msg !== 'object') return;
     const m = msg as { role?: unknown; content?: unknown };
     if (m.role !== 'user') return;
-    if (!Array.isArray(m.content)) return;
 
     const msgPath = `messages.${i}`;
+
+    if (typeof m.content === 'string') {
+      set.add(msgPath);
+      return;
+    }
+    if (!Array.isArray(m.content)) return;
+
     const contentPath = `${msgPath}.content`;
     const textIndices: number[] = [];
     m.content.forEach((item, j) => {
